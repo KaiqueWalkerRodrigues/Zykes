@@ -1,44 +1,13 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 8.42105C0 3.77023 3.77023 0 8.42105 0H23.5789C28.2298 0 32 3.77023 32 8.42105V23.5789C32 28.2298 28.2298 32 23.5789 32H8.42105C3.77023 32 0 28.2298 0 23.5789V8.42105Z" fill="#465FFF"/>
-<g filter="url(#filter0_d_1884_16361)">
-<path d="M8.42383 8.42152C8.42383 7.49135 9.17787 6.7373 10.108 6.7373C11.0382 6.7373 11.7922 7.49135 11.7922 8.42152V23.5794C11.7922 24.5096 11.0382 25.2636 10.108 25.2636C9.17787 25.2636 8.42383 24.5096 8.42383 23.5794V8.42152Z" fill="white"/>
-</g>
-<g filter="url(#filter1_d_1884_16361)">
-<path d="M14.7422 15.1569C14.7422 14.2267 15.4962 13.4727 16.4264 13.4727C17.3566 13.4727 18.1106 14.2267 18.1106 15.1569V23.5779C18.1106 24.5081 17.3566 25.2621 16.4264 25.2621C15.4962 25.2621 14.7422 24.5081 14.7422 23.5779V15.1569Z" fill="white" fill-opacity="0.9" shape-rendering="crispEdges"/>
-</g>
-<g filter="url(#filter2_d_1884_16361)">
-<path d="M21.0547 10.9459C21.0547 10.0158 21.8087 9.26172 22.7389 9.26172C23.6691 9.26172 24.4231 10.0158 24.4231 10.9459V23.5775C24.4231 24.5077 23.6691 25.2617 22.7389 25.2617C21.8087 25.2617 21.0547 24.5077 21.0547 23.5775V10.9459Z" fill="white" fill-opacity="0.7" shape-rendering="crispEdges"/>
-</g>
-<defs>
-<filter id="filter0_d_1884_16361" x="7.42383" y="6.2373" width="5.36841" height="20.5264" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-<feFlood flood-opacity="0" result="BackgroundImageFix"/>
-<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-<feOffset dy="0.5"/>
-<feGaussianBlur stdDeviation="0.5"/>
-<feComposite in2="hardAlpha" operator="out"/>
-<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12 0"/>
-<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1884_16361"/>
-<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1884_16361" result="shape"/>
-</filter>
-<filter id="filter1_d_1884_16361" x="13.7422" y="12.9727" width="5.36841" height="13.7891" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-<feFlood flood-opacity="0" result="BackgroundImageFix"/>
-<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-<feOffset dy="0.5"/>
-<feGaussianBlur stdDeviation="0.5"/>
-<feComposite in2="hardAlpha" operator="out"/>
-<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12 0"/>
-<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1884_16361"/>
-<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1884_16361" result="shape"/>
-</filter>
-<filter id="filter2_d_1884_16361" x="20.0547" y="8.76172" width="5.36841" height="18" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-<feFlood flood-opacity="0" result="BackgroundImageFix"/>
-<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-<feOffset dy="0.5"/>
-<feGaussianBlur stdDeviation="0.5"/>
-<feComposite in2="hardAlpha" operator="out"/>
-<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.12 0"/>
-<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1884_16361"/>
-<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1884_16361" result="shape"/>
-</filter>
-</defs>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="133" height="133" viewBox="0 0 133 133">
+  <defs>
+    <style>
+      .cls-1 {
+        font-size: 83.333px;
+        fill: #fff;
+        font-family: "Segoe UI Emoji";
+      }
+    </style>
+  </defs>
+  <image id="Camada_1" data-name="Camada 1" width="133" height="133" xlink:href="data:img/png;base64,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"/>
+  <text id="Zy" class="cls-1" x="23.332" y="88.324">Zy</text>
 </svg>

@@ -15,4 +15,12 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    host: "0.0.0.0", // necessário para funcionar no Docker
+    port: 5173, // porta padrão do Vite
+    strictPort: true,
+    watch: {
+      usePolling: true, // útil em ambientes Docker/Linux
+    },
+  },
 });

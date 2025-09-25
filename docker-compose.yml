@@ -1,0 +1,82 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: zykes-frontend
+    container_name: c-zykes-frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - zykes-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: zykes-php
+    container_name: c-zykes-php
+    volumes:
+      - ./backend:/var/www/html
+    networks:
+      - zykes-network
+    restart: unless-stopped
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    container_name: c-zykes-mysql
+    env_file:
+      - .env
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - zykes-network
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: c-zykes-phpmyadmin
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    networks:
+      - zykes-network
+    restart: unless-stopped
+    depends_on:
+      - db
+    # NÃO expomos porta aqui, quem expõe é o Nginx na :82
+
+  proxy:
+    build:
+      context: ./proxy
+      dockerfile: Dockerfile
+    image: zykes-proxy
+    container_name: c-zykes-proxy
+    ports:
+      - "80:80" # Frontend
+      - "81:81" # Backend PHP
+      - "82:82" # phpMyAdmin
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - zykes-network
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+      - phpmyadmin
+
+networks:
+  zykes-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local

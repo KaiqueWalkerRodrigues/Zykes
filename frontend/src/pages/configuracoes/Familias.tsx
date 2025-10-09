@@ -3,37 +3,100 @@ import PageMeta from "../../components/common/PageMeta";
 import DataTable from "../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash, FaNewspaper } from "react-icons/fa6";
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
+
+// Função auxiliar
+function isSameData(a: Familia[], b: Familia[]): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+const fetchData = async (
+  page: number,
+  pageSize: number,
+  search: string,
+  etagRef?: React.MutableRefObject<string | null>
+) => {
+  const headers: Record<string, string> = {};
+  if (etagRef?.current) {
+    headers["If-None-Match"] = etagRef.current;
+  }
+
+  const res = await fetch("http://localhost:81/api/gets/get_familias.php", {
+    method: "GET",
+    headers,
+    cache: "no-cache",
+  });
+
+  if (res.status === 304) {
+    // Sem mudanças
+    return { data: null, total: null, notModified: true };
+  }
+
+  if (!res.ok) {
+    throw new Error(`Erro ao buscar famílias: ${res.status}`);
+  }
+
+  const etag = res.headers.get("etag");
+  if (etagRef && etag) etagRef.current = etag;
+
+  const data = await res.json();
+
+  let filtered = data;
+  if (search) {
+    const s = search.toLowerCase();
+    filtered = data.filter((item: Familia) =>
+      String(item.nome || "")
+        .toLowerCase()
+        .includes(s)
+    );
+  }
+
+  const total = filtered.length;
+  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  return { data: paginated, total, notModified: false };
+};
 
 type Familia = {
   id_familia: number;
   nome: string;
-  acoes: string;
+  acoes?: string;
 };
 
 export default function Familias() {
   const etagRef = useRef<string | null>(null);
+  const lastDataRef = useRef<Familia[]>([]); // <- comparação interna no polling
+
   const [refreshSignal, setRefreshSignal] = React.useState(0);
-  const [search, setSearch] = React.useState(""); // controle de busca
-  const [modalOpen, setModalOpen] = React.useState(false); // controle do modal
+  const [search, setSearch] = React.useState("");
+  const [modalOpen, setModalOpen] = React.useState(false);
   const [selectedFamilia, setSelectedFamilia] = React.useState<Familia | null>(
     null
   );
-  const [lastData, setLastData] = React.useState<any[]>([]); // para comparar
 
-  // Polling inteligente: só ativa se não estiver buscando
-  React.useEffect(() => {
+  useEffect(() => {
     const interval = setInterval(async () => {
-      const result = await fetchData(0, 10, search, etagRef);
-      if (result && !isSameData(result.data, lastData)) {
-        setLastData(result.data);
-        setRefreshSignal((k) => k + 1);
-      }
-    }, 5000); // 5 segundos, ajuste conforme necessário
-    return () => clearInterval(interval);
-  }, [search, lastData]);
+      try {
+        const result = await fetchData(0, 10, search, etagRef);
 
-  // Coloque columns aqui para acessar setModalOpen
+        if (result?.notModified) {
+          // 304 → nada mudou
+          return;
+        }
+
+        if (result?.data) {
+          if (!isSameData(result.data, lastDataRef.current)) {
+            lastDataRef.current = result.data;
+            setRefreshSignal((k) => k + 1);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [search]); // depende só de "search", não de lastData
+
   const columns: ColumnDef<Familia>[] = [
     { accessorKey: "id_familia", header: "#" },
     { accessorKey: "nome", header: "Nome" },
@@ -43,13 +106,13 @@ export default function Familias() {
       cell: ({ row }) => (
         <div className="row flex">
           <button
-            className="rounded-md rounded-r-none bg-blue-600 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-blue-500 focus:shadow-none active:bg-blue-500 hover:bg-blue-500 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+            className="rounded-md rounded-r-none bg-blue-600 py-2 px-4 text-sm text-white"
             type="button"
           >
             <FaNewspaper />
           </button>
           <button
-            className="rounded-none bg-slate-600 py-2 px-4 border-l border-r border-slate-700 text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-slate-500 focus:shadow-none active:bg-slate-500 hover:bg-slate-500 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+            className="rounded-none bg-slate-600 py-2 px-4 border-x border-slate-700 text-sm text-white"
             type="button"
             onClick={() => {
               setSelectedFamilia(row.original);
@@ -59,7 +122,7 @@ export default function Familias() {
             <FaGear />
           </button>
           <button
-            className="rounded-md rounded-l-none bg-red-600 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-red-500 focus:shadow-none active:bg-red-500 hover:bg-red-500 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+            className="rounded-md rounded-l-none bg-red-600 py-2 px-4 text-sm text-white"
             type="button"
           >
             <FaTrash />
@@ -71,10 +134,7 @@ export default function Familias() {
 
   return (
     <div>
-      <PageMeta
-        title="Configurações Familias"
-        description="This is React.js Blank Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
-      />
+      <PageMeta title="Configurações Familias" description="..." />
       <PageBreadcrumb
         items={[
           { label: "Home", to: "/" },
@@ -83,12 +143,17 @@ export default function Familias() {
         ]}
       />
       <div className="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
-        <div className="mx-auto w-full max-w-[630px] text-center"></div>
         <DataTable
           columns={columns}
-          fetchData={(page, pageSize, s) =>
-            fetchData(page, pageSize, s, etagRef)
-          }
+          fetchData={async (page, pageSize, s) => {
+            const r = await fetchData(page, pageSize, s, etagRef);
+            // Quando você realmente for renderizar, atualize a ref local também,
+            // assim a primeira render já “sincroniza” com o polling:
+            if (r?.data && !r.notModified) {
+              lastDataRef.current = r.data;
+            }
+            return r?.notModified ? { data: [], total: 0 } : r;
+          }}
           pageSize={10}
           search={search}
           setSearch={setSearch}
@@ -120,7 +185,7 @@ export function ModalEditarFamilia({
       id="modal-editar-familia"
       data-dialog-backdrop="modal-md"
       data-dialog-backdrop-close="true"
-      className={`fixed inset-0 z-[9999999] grid h-screen w-screen place-items-center transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[2] grid h-screen w-screen place-items-center transition-opacity duration-300 ${
         open
           ? "opacity-100 pointer-events-auto"
           : "opacity-0 pointer-events-none"
@@ -175,42 +240,4 @@ export function ModalEditarFamilia({
       </div>
     </div>
   );
-}
-
-const fetchData = async (
-  page: number,
-  pageSize: number,
-  search: string,
-  etagRef?: React.MutableRefObject<string | null>
-) => {
-  const headers: Record<string, string> = {};
-  if (etagRef && etagRef.current) {
-    headers["If-None-Match"] = etagRef.current;
-  }
-  const res = await fetch("http://localhost:81/api/gets/get_familias.php", {
-    headers,
-  });
-
-  if (res.status === 304) {
-    // Nada mudou, retorna null para indicar que não precisa atualizar
-    return null;
-  }
-  const data = await res.json();
-  const etag = res.headers.get("etag");
-  if (etagRef) etagRef.current = etag;
-
-  let filtered = data;
-  if (search) {
-    filtered = data.filter((item: Familia) =>
-      item.nome.toLowerCase().includes(search.toLowerCase())
-    );
-  }
-  const total = filtered.length;
-  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
-  return { data: paginated, total };
-};
-
-// Função para comparar arrays de objetos
-function isSameData(a: any[], b: any[]) {
-  return JSON.stringify(a) === JSON.stringify(b);
 }

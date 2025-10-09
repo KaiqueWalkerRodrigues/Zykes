@@ -19,7 +19,7 @@ try {
     $pdo = Conexao::pdo();
 
     // Carrega os dados (simples e robusto). Se quiser otimizar, dá pra usar uma coluna updated_at.
-    $stmt = $pdo->query("SELECT id_familia, nome FROM familias ORDER BY nome ASC");
+    $stmt = $pdo->query("SELECT id_familia, nome FROM familias WHERE deleted_at IS NULL");
     $familias = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     // Gera um ETag estável com base no conteúdo

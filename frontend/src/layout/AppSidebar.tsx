@@ -36,8 +36,9 @@ const configItems: NavItem[] = [
     name: "Configurações",
     subItems: [
       { name: "Familias", path: "/configuracoes/familias", pro: false },
-      { name: "Usuários", path: "/configuracoes/usuarios", pro: false },
-      { name: "Vendedores", path: "/configuracoes/vendedores", pro: false },
+      { name: "Fornecedores", path: "/configuracoes/fornecedores", pro: false },
+      // { name: "Usuários", path: "/configuracoes/usuarios", pro: false },
+      // { name: "Vendedores", path: "/configuracoes/vendedores", pro: false },
     ],
   },
   {
@@ -240,7 +241,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
+      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-1 border-r border-gray-200 
         ${
           isExpanded || isMobileOpen
             ? "w-[290px]"

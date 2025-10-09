@@ -19,7 +19,7 @@ type DataTableProps<T> = {
   pageSize?: number;
   search: string;
   setSearch: React.Dispatch<React.SetStateAction<string>>;
-  refreshSignal?: number; // NOVO
+  refreshSignal?: number;
 };
 
 function DataTable<T extends object>({
@@ -28,7 +28,7 @@ function DataTable<T extends object>({
   pageSize = 10,
   search,
   setSearch,
-  refreshSignal, // NOVO
+  refreshSignal,
 }: DataTableProps<T>) {
   const [data, setData] = useState<T[]>([]);
   const [total, setTotal] = useState(0);
@@ -42,7 +42,7 @@ function DataTable<T extends object>({
       setTotal(res.total);
       setLoading(false);
     });
-  }, [page, pageSize, search, fetchData, refreshSignal]); // Adicione refreshSignal aqui
+  }, [page, pageSize, search, fetchData, refreshSignal]);
 
   const table = useReactTable({
     data,
@@ -58,25 +58,18 @@ function DataTable<T extends object>({
 
   return (
     <div
-      className="datatable-container"
-      style={{
-        background: "#fff",
-        borderRadius: 8,
-        padding: 24,
-        boxShadow: "0 0 8px #eee",
-      }}
+      className="
+        datatable-container
+        rounded-xl p-6
+        shadow-sm ring-1 ring-gray-200
+        bg-white text-slate-700
+        dark:bg-gray-900 dark:text-slate-200 dark:ring-gray-800
+      "
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ position: "relative" }}>
-          <FaSearch
-            style={{ position: "absolute", left: 8, top: 10, color: "#aaa" }}
-          />
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative">
+          <FaSearch className="absolute left-2 top-2.5 text-gray-400" />
           <input
             type="text"
             placeholder="Pesquisar..."
@@ -85,31 +78,33 @@ function DataTable<T extends object>({
               setPage(0);
               setSearch(e.target.value);
             }}
-            style={{
-              padding: "8px 8px 8px 32px",
-              borderRadius: 4,
-              border: "1px solid #ddd",
-              minWidth: 220,
-            }}
+            className="
+              pl-8 pr-3 py-2 min-w-[220px]
+              rounded-md border border-gray-300
+              bg-white text-slate-700 placeholder:text-slate-400
+              focus:outline-none focus:border-gray-400
+              dark:bg-gray-800 dark:text-slate-200 dark:border-gray-700 dark:placeholder:text-slate-400
+            "
           />
         </div>
-        <div>
+        <div className="text-sm text-slate-600 dark:text-slate-300">
           Página {page + 1} de {Math.ceil(total / pageSize)}
         </div>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+
+      <table className="w-full border-collapse">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  style={{
-                    borderBottom: "2px solid #eee",
-                    padding: "8px",
-                    textAlign: "left",
-                    background: "#f8f9fc",
-                  }}
+                  className="
+                    text-left px-3 py-2
+                    border-b-2 border-gray-100 bg-gray-50
+                    text-slate-700
+                    dark:border-gray-800 dark:bg-gray-800 dark:text-slate-200
+                  "
                 >
                   {flexRender(
                     header.column.columnDef.header,
@@ -125,7 +120,7 @@ function DataTable<T extends object>({
             <tr>
               <td
                 colSpan={columns.length}
-                style={{ textAlign: "center", padding: 24 }}
+                className="text-center p-6 text-slate-600 dark:text-slate-300"
               >
                 Carregando...
               </td>
@@ -134,22 +129,23 @@ function DataTable<T extends object>({
             <tr>
               <td
                 colSpan={columns.length}
-                style={{ textAlign: "center", padding: 24 }}
+                className="text-center p-6 text-slate-600 dark:text-slate-300"
               >
                 Nenhum registro encontrado.
               </td>
             </tr>
           ) : (
-            table.getRowModel().rows.map((row) => (
-              <tr key={row.id}>
+            table.getRowModel().rows.map((row, i) => (
+              <tr
+                key={row.id}
+                className="
+                  border-b border-gray-100
+                  hover:bg-gray-50
+                  dark:border-gray-800 dark:hover:bg-gray-800/60
+                "
+              >
                 {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #f1f1f1",
-                    }}
-                  >
+                  <td key={cell.id} className="px-3 py-2 align-middle">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -158,23 +154,19 @@ function DataTable<T extends object>({
           )}
         </tbody>
       </table>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          marginTop: 16,
-          gap: 8,
-        }}
-      >
+
+      {/* Pagination */}
+      <div className="flex justify-end mt-4 gap-2">
         <button
           onClick={() => setPage((p) => Math.max(p - 1, 0))}
           disabled={page === 0}
-          style={{
-            padding: "6px 12px",
-            borderRadius: 4,
-            border: "1px solid #ddd",
-            background: "#f8f9fc",
-          }}
+          className="
+            inline-flex items-center justify-center
+            px-3 py-2 rounded-md border
+            border-gray-300 bg-gray-50
+            disabled:opacity-50
+            dark:border-gray-700 dark:bg-gray-800
+          "
         >
           <FaChevronLeft />
         </button>
@@ -183,12 +175,13 @@ function DataTable<T extends object>({
             setPage((p) => (p + 1 < Math.ceil(total / pageSize) ? p + 1 : p))
           }
           disabled={page + 1 >= Math.ceil(total / pageSize)}
-          style={{
-            padding: "6px 12px",
-            borderRadius: 4,
-            border: "1px solid #ddd",
-            background: "#f8f9fc",
-          }}
+          className="
+            inline-flex items-center justify-center
+            px-3 py-2 rounded-md border
+            border-gray-300 bg-gray-50
+            disabled:opacity-50
+            dark:border-gray-700 dark:bg-gray-800
+          "
         >
           <FaChevronRight />
         </button>

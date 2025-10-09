@@ -37,6 +37,10 @@ export default function App() {
 
             {/* Forms */}
             <Route path="/configuracoes/familias" element={<Familias />} />
+            {/* <Route
+              path="/configuracoes/fornecedores"
+              element={<Fornecedores />}
+            /> */}
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

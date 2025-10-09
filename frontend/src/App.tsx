@@ -18,7 +18,7 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
-import Produtos from "./pages/configuracoes/Produtos";
+import Familias from "./pages/configuracoes/Familias";
 
 export default function App() {
   return (
@@ -36,7 +36,7 @@ export default function App() {
             <Route path="/blank" element={<Blank />} />
 
             {/* Forms */}
-            <Route path="/configuracoes/produtos" element={<Produtos />} />
+            <Route path="/configuracoes/familias" element={<Familias />} />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

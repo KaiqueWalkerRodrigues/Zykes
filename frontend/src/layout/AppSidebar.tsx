@@ -35,7 +35,7 @@ const configItems: NavItem[] = [
     icon: <FaGear />,
     name: "Configurações",
     subItems: [
-      { name: "Produtos", path: "/configuracoes/produtos", pro: false },
+      { name: "Familias", path: "/configuracoes/familias", pro: false },
       { name: "Usuários", path: "/configuracoes/usuarios", pro: false },
       { name: "Vendedores", path: "/configuracoes/vendedores", pro: false },
     ],

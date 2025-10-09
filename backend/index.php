@@ -24,7 +24,6 @@ try {
         "message" => "Conexão com banco de dados bem-sucedida!",
         "data_atual" => $row['data_atual']
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
 } catch (PDOException $e) {
     echo json_encode([
         "status" => "error",

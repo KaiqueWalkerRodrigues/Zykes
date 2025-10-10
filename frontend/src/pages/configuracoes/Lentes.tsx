@@ -13,7 +13,7 @@ type Lente = {
   id_lente: number;
   id_familia: number;
   id_indice: number;
-  id_tratamento: number;
+  id_tratamento: number | null;
   valor_venda?: number | string | null;
   valor_compra?: number | string | null;
   created_at?: string | null;
@@ -293,8 +293,12 @@ export default function Lentes({ familiaId, familiaNome }: LentesProps) {
         cell: ({ row }) => {
           const lente = row.original;
           const nomeIndice = indiceMap.get(lente.id_indice) ?? `?`;
-          const nomeTratamento = tratamentoMap.get(lente.id_tratamento) ?? `?`;
-          return `${familiaNome} ${nomeIndice} ${nomeTratamento}`;
+          const nomeTratamento = lente.id_tratamento
+            ? tratamentoMap.get(lente.id_tratamento) ?? `?`
+            : "";
+          return [familiaNome, nomeIndice, nomeTratamento]
+            .filter(Boolean)
+            .join(" ");
         },
       },
       {
@@ -476,7 +480,6 @@ function ModalCreateLente({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.id_indice) return alert("Selecione um Índice de Refração.");
-    if (!form.id_tratamento) return alert("Selecione um Tratamento.");
 
     try {
       setLoading(true);
@@ -560,13 +563,13 @@ function ModalCreateLente({
                       id_tratamento: Number(e.target.value),
                     }))
                   }
-                  required
                   disabled={loadingLookups}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-500 dark:focus:ring-slate-500/40"
                 >
-                  <option value="">
-                    {loadingLookups ? "Carregando..." : "Selecione..."}
-                  </option>
+                  {loadingLookups
+                    ? "<option value=''>Carregando...</option>"
+                    : ""}
+                  <option value="">Nenhum</option>
                   {tratamentos.map((t) => (
                     <option
                       key={t.id_tratamento_lente}
@@ -733,9 +736,10 @@ function ModalEditLente({
                   disabled={loadingLookups}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-500 dark:focus:ring-slate-500/40"
                 >
-                  <option value="">
-                    {loadingLookups ? "Carregando..." : "Selecione..."}
-                  </option>
+                  {loadingLookups
+                    ? "<option value=''>Carregando...</option>"
+                    : ""}
+                  <option value="">Nenhum</option>
                   {tratamentos.map((t) => (
                     <option
                       key={t.id_tratamento_lente}

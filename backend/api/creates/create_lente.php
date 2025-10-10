@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $data = json_decode(file_get_contents("php://input"));
 
 // Validação dos dados
-if (!$data || !isset($data->id_familia) || !isset($data->id_indice) || !isset($data->id_tratamento)) {
+if (!$data || !isset($data->id_familia) || !isset($data->id_indice)) {
     http_response_code(400);
     echo json_encode(["status" => "error", "message" => "Campos obrigatórios (id_familia, id_indice, id_tratamento) não foram enviados."]);
     exit;
@@ -31,7 +31,7 @@ if (!$data || !isset($data->id_familia) || !isset($data->id_indice) || !isset($d
 // Define valores, permitindo nulos para os campos não obrigatórios
 $id_familia = $data->id_familia;
 $id_indice = $data->id_indice;
-$id_tratamento = $data->id_tratamento;
+$id_tratamento = $data->id_tratamento ?? null;
 $valor_venda = $data->valor_venda ?? null;
 $valor_compra = $data->valor_compra ?? null;
 $agora = date('Y-m-d H:i:s');

@@ -50,15 +50,14 @@ try {
         // Validação para cada objeto dentro do array
         if (
             !isset($lente->id_lente) || !is_numeric($lente->id_lente) ||
-            !isset($lente->id_indice) || !is_numeric($lente->id_indice) ||
-            !isset($lente->id_tratamento) || !is_numeric($lente->id_tratamento)
+            !isset($lente->id_indice) || !is_numeric($lente->id_indice)
         ) {
             // Se um item for inválido, lança uma exceção para cancelar a transação
             throw new InvalidArgumentException("Dados inválidos para a lente ID: " . ($lente->id_lente ?? 'N/A'));
         }
 
         $stmt->bindValue(':id_indice', $lente->id_indice, PDO::PARAM_INT);
-        $stmt->bindValue(':id_tratamento', $lente->id_tratamento, PDO::PARAM_INT);
+        $stmt->bindValue(':id_tratamento', $lente->id_tratamento ?? null, PDO::PARAM_INT);
         $stmt->bindValue(':valor_venda', $lente->valor_venda ?? null);
         $stmt->bindValue(':valor_compra', $lente->valor_compra ?? null);
         $stmt->bindValue(':updated_at', $agora);

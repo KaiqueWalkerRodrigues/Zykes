@@ -6,35 +6,18 @@ import { FaGear, FaTrash } from "react-icons/fa6";
 /* ========================
    Tipos
    ======================== */
-type Fornecedor = {
-  id_fornecedor: number;
+type Empresa = {
+  id_empresa: number;
   nome: string;
-  cnpj: string;
-  acoes?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+  deleted_at?: string | null;
 };
 
 /* ========================
    Funções Auxiliares (Helpers)
    ======================== */
-function onlyDigits(v: string) {
-  return (v || "").replace(/\D+/g, "");
-}
-
-function maskCNPJ(v: string) {
-  const d = onlyDigits(v).slice(0, 14);
-  let out = d;
-  if (d.length > 2) out = d.slice(0, 2) + "." + d.slice(2);
-  if (d.length > 5) out = out.slice(0, 6) + "." + d.slice(5);
-  if (d.length > 8) out = out.slice(0, 10) + "/" + d.slice(8);
-  if (d.length > 12) out = out.slice(0, 15) + "-" + d.slice(12);
-  return out;
-}
-
-function isValidCNPJ(v: string) {
-  return onlyDigits(v).length === 14;
-}
-
-function isSameData(a: Fornecedor[], b: Fornecedor[]): boolean {
+function isSameData<T>(a: T[], b: T[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
@@ -102,51 +85,38 @@ function Toast({
 /* ========================
    Função para buscar dados da API
    ======================== */
-const fetchData = async (
+const fetchData = async <T,>(
+  url: string,
   page: number,
   pageSize: number,
   search: string,
   etagRef?: React.MutableRefObject<string | null>
 ) => {
   const headers: Record<string, string> = {};
-  if (etagRef?.current) headers["If-None-Match"] = etagRef.current;
+  if (etagRef?.current) {
+    headers["If-None-Match"] = etagRef.current;
+  }
 
-  const res = await fetch(
-    "http://localhost:81/api/gets/get_lente_fornecedores.php",
-    {
-      method: "GET",
-      headers,
-      cache: "no-cache",
-    }
-  );
+  const res = await fetch(url, { method: "GET", headers, cache: "no-cache" });
 
   if (res.status === 304) {
     return { data: null, total: null, notModified: true };
   }
-
   if (!res.ok) {
-    throw new Error(`Erro ao buscar fornecedores: ${res.status}`);
+    throw new Error(`Erro ao buscar dados: ${res.status}`);
   }
 
   const etag = res.headers.get("etag");
   if (etagRef && etag) etagRef.current = etag;
 
-  const data: Fornecedor[] = await res.json();
-
+  const data: T[] = await res.json();
   let filtered = data;
   if (search) {
     const s = search.toLowerCase();
-    filtered = data.filter(
-      (item) =>
-        String(item.nome || "")
-          .toLowerCase()
-          .includes(s) ||
-        String(item.cnpj || "")
-          .toLowerCase()
-          .includes(s) ||
-        String(item.id_fornecedor || "")
-          .toLowerCase()
-          .includes(s)
+    filtered = data.filter((item: any) =>
+      String(item.nome || "")
+        .toLowerCase()
+        .includes(s)
     );
   }
 
@@ -156,12 +126,27 @@ const fetchData = async (
 };
 
 /* ========================
-   Página Fornecedores
+   Seção Genérica para Entidades Simples (CRUD)
    ======================== */
-export default function Lente_fornecedores() {
-  const etagRef = useRef<string | null>(null);
-  const lastDataRef = useRef<Fornecedor[]>([]);
+type SectionProps<T> = {
+  title: string;
+  fetchUrl: string;
+  createUrl: string;
+  updateUrl: string;
+  deleteUrl: string;
+  idKey: keyof T;
+};
 
+function Section<T extends { nome: string }>({
+  title,
+  fetchUrl,
+  createUrl,
+  updateUrl,
+  deleteUrl,
+  idKey,
+}: SectionProps<T>) {
+  const etagRef = useRef<string | null>(null);
+  const lastDataRef = useRef<T[]>([]);
   const [refreshSignal, setRefreshSignal] = useState(0);
   const [search, setSearch] = useState("");
   const [toastOpen, setToastOpen] = useState(false);
@@ -169,66 +154,51 @@ export default function Lente_fornecedores() {
   const [editOpen, setEditOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selected, setSelected] = useState<Fornecedor | null>(null);
+  const [selected, setSelected] = useState<T | null>(null);
 
-  // Polling com ETag
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const result = await fetchData(0, 10, search, etagRef);
+        const result = await fetchData<T>(fetchUrl, 0, 10, search, etagRef);
         if (result?.notModified) return;
-
-        if (result?.data) {
-          if (!isSameData(result.data, lastDataRef.current)) {
-            lastDataRef.current = result.data;
-            setRefreshSignal((k) => k + 1);
-          }
+        if (result?.data && !isSameData(result.data, lastDataRef.current)) {
+          lastDataRef.current = result.data;
+          setRefreshSignal((k) => k + 1);
         }
       } catch (e) {
         console.error(e);
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [search]);
+  }, [fetchUrl, search]);
 
-  // Callbacks de sucesso
   const onCreated = () => {
     setCreateOpen(false);
-    setToastMsg("Fornecedor cadastrado com sucesso.");
+    setToastMsg(`${title} cadastrada com sucesso.`);
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 2500);
     setRefreshSignal((prev) => prev + 1);
   };
-
   const onUpdated = () => {
     setEditOpen(false);
-    setToastMsg("Fornecedor atualizado com sucesso.");
+    setToastMsg(`${title} atualizada com sucesso.`);
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 2500);
     setRefreshSignal((prev) => prev + 1);
   };
-
   const onDeleted = () => {
     setDeleteOpen(false);
     setSelected(null);
-    setToastMsg("Fornecedor excluído com sucesso.");
+    setToastMsg(`${title} excluída com sucesso.`);
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 2500);
     setRefreshSignal((prev) => prev + 1);
   };
 
-  const columns = useMemo<ColumnDef<Fornecedor>[]>(
+  const columns = useMemo<ColumnDef<T>[]>(
     () => [
-      { accessorKey: "id_fornecedor", header: "#" },
+      { accessorKey: idKey as string, header: "#" },
       { accessorKey: "nome", header: "Nome" },
-      {
-        accessorKey: "cnpj",
-        header: "CNPJ",
-        cell: ({ getValue }) => {
-          const v = String(getValue() ?? "");
-          return <span className="font-mono">{maskCNPJ(v)}</span>;
-        },
-      },
       {
         accessorKey: "acoes",
         header: "Ações",
@@ -240,7 +210,7 @@ export default function Lente_fornecedores() {
                 setSelected(row.original);
                 setEditOpen(true);
               }}
-              title="Editar Fornecedor"
+              title={`Editar ${title}`}
               type="button"
             >
               <FaGear />
@@ -251,7 +221,7 @@ export default function Lente_fornecedores() {
                 setSelected(row.original);
                 setDeleteOpen(true);
               }}
-              title="Excluir Fornecedor"
+              title={`Excluir ${title}`}
               type="button"
             >
               <FaTrash />
@@ -260,32 +230,36 @@ export default function Lente_fornecedores() {
         ),
       },
     ],
-    []
+    [title, idKey]
   );
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-6 py-4">
-        <div className="text-sm text-slate-500">
-          Gerenciamento de Fornecedores
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="inline-flex items-center gap-2 rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow hover:bg-green-800"
-            onClick={() => setCreateOpen(true)}
-            type="button"
-          >
-            Cadastrar Fornecedor
-          </button>
-        </div>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+          Gerenciar {title}
+        </h3>
+        <button
+          className="inline-flex items-center gap-2 rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow hover:bg-green-800"
+          onClick={() => setCreateOpen(true)}
+          type="button"
+        >
+          Cadastrar {title}
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto px-6 pb-6">
-        <div className="rounded-2xl border border-gray-200 bg-white px-5 py-6 dark:border-gray-800 dark:bg-slate-900">
+        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-slate-900">
           <DataTable
             columns={columns}
             fetchData={async (page, pageSize, s) => {
-              const r = await fetchData(page, pageSize, s, etagRef);
+              const r = await fetchData<T>(
+                fetchUrl,
+                page,
+                pageSize,
+                s,
+                etagRef
+              );
               if (r?.data && !r.notModified) {
                 lastDataRef.current = r.data;
               }
@@ -299,22 +273,30 @@ export default function Lente_fornecedores() {
         </div>
       </div>
 
-      <ModalCreateFornecedor
+      <ModalCreate
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         onSuccess={onCreated}
+        title={title}
+        createUrl={createUrl}
       />
-      <ModalEditFornecedor
+      <ModalEdit
         open={editOpen}
         onClose={() => setEditOpen(false)}
-        fornecedor={selected}
+        entity={selected}
         onSuccess={onUpdated}
+        title={title}
+        updateUrl={updateUrl}
+        idKey={idKey}
       />
-      <ModalDeleteFornecedor
+      <ModalDelete
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        fornecedor={selected}
+        entity={selected}
         onSuccess={onDeleted}
+        title={title}
+        deleteUrl={deleteUrl}
+        idKey={idKey}
       />
       <Toast
         open={toastOpen}
@@ -324,25 +306,31 @@ export default function Lente_fornecedores() {
     </div>
   );
 }
+
 /* =========================
-   Modais de Fornecedor
+   Modais
    ========================= */
 type ModalProps = {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  title: string;
 };
 
-function ModalCreateFornecedor({ open, onClose, onSuccess }: ModalProps) {
+function ModalCreate({
+  open,
+  onClose,
+  onSuccess,
+  title,
+  createUrl,
+}: ModalProps & { createUrl: string }) {
   const [nome, setNome] = useState("");
-  const [cnpj, setCnpj] = useState("");
   const [loading, setLoading] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setNome("");
-      setCnpj("");
       setLoading(false);
     }
     setTimeout(() => {
@@ -352,34 +340,24 @@ function ModalCreateFornecedor({ open, onClose, onSuccess }: ModalProps) {
     }, 100);
   }, [open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { nome: nome.trim(), cnpj: onlyDigits(cnpj) };
-
-    if (!payload.nome) return alert("Informe o nome.");
-    if (!isValidCNPJ(payload.cnpj))
-      return alert("CNPJ inválido (precisa ter 14 dígitos).");
-
+    if (!nome.trim()) return alert("Informe o nome.");
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/creates/create_lente_fornecedor.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
+      const resp = await fetch(createUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: nome.trim() }),
+      });
       if (!resp.ok) {
         const txt = await resp.text();
         throw new Error(txt || "Falha ao cadastrar.");
       }
-
       onSuccess();
     } catch (err) {
       console.error(err);
-      alert("Não foi possível cadastrar o fornecedor.");
+      alert("Não foi possível cadastrar.");
     } finally {
       setLoading(false);
     }
@@ -394,44 +372,26 @@ function ModalCreateFornecedor({ open, onClose, onSuccess }: ModalProps) {
     >
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative m-4 p-4 w-[min(600px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
+        className="relative m-4 p-4 w-[min(500px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={submit}>
           <div className="pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
-            Cadastrar Fornecedor
+            Cadastrar {title}
           </div>
           <div className="p-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-1">
-                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
-                  Nome *
-                </label>
-                <input
-                  ref={firstInputRef}
-                  type="text"
-                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
-                  CNPJ *
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600 font-mono"
-                  value={cnpj}
-                  onChange={(e) => setCnpj(maskCNPJ(e.target.value))}
-                  placeholder="00.000.000/0000-00"
-                  required
-                />
-              </div>
-            </div>
+            <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
+              Nome *
+            </label>
+            <input
+              ref={firstInputRef}
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              autoFocus
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-500 dark:focus:ring-slate-500/40"
+            />
           </div>
           <hr className="mt-3 dark:border-gray-700" />
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-4">
@@ -457,57 +417,42 @@ function ModalCreateFornecedor({ open, onClose, onSuccess }: ModalProps) {
   );
 }
 
-function ModalEditFornecedor({
+function ModalEdit<T extends { nome: string }>({
   open,
   onClose,
-  fornecedor,
+  entity,
   onSuccess,
-}: ModalProps & { fornecedor: Fornecedor | null }) {
+  title,
+  updateUrl,
+  idKey,
+}: ModalProps & { entity: T | null; updateUrl: string; idKey: keyof T }) {
   const [nome, setNome] = useState("");
-  const [cnpj, setCnpj] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (fornecedor && open) {
-      setNome(fornecedor.nome || "");
-      setCnpj(maskCNPJ(fornecedor.cnpj || ""));
+    if (entity && open) {
+      setNome(entity.nome || "");
     }
-  }, [fornecedor, open]);
+  }, [entity, open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fornecedor) return;
-
-    const payload = {
-      id_fornecedor: fornecedor.id_fornecedor,
-      nome: nome.trim(),
-      cnpj: onlyDigits(cnpj),
-    };
-
-    if (!payload.nome) return alert("Informe o nome.");
-    if (!isValidCNPJ(payload.cnpj))
-      return alert("CNPJ inválido (precisa ter 14 dígitos).");
-
+    if (!entity || !nome.trim()) return;
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/updates/update_lente_fornecedor.php",
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
+      const payload = { [idKey]: (entity as any)[idKey], nome: nome.trim() };
+      const resp = await fetch(updateUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(txt || "Falha ao atualizar.");
+        throw new Error((await resp.text()) || "Falha ao atualizar.");
       }
-
       onSuccess();
     } catch (err) {
       console.error(err);
-      alert("Não foi possível atualizar o fornecedor.");
+      alert("Não foi possível atualizar.");
     } finally {
       setLoading(false);
     }
@@ -522,41 +467,24 @@ function ModalEditFornecedor({
     >
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative m-4 p-4 w-[min(600px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
+        className="relative m-4 p-4 w-[min(500px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={submit}>
           <div className="pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
-            Editar Fornecedor ({fornecedor?.nome})
+            Editar {title} (ID: {entity ? (entity as any)[idKey] : ""})
           </div>
           <div className="p-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-1">
-                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
-                  CNPJ *
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600 font-mono"
-                  value={cnpj}
-                  onChange={(e) => setCnpj(maskCNPJ(e.target.value))}
-                  required
-                />
-              </div>
-            </div>
+            <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
+              Nome *
+            </label>
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              required
+              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-slate-500 dark:focus:ring-slate-500/40"
+            />
           </div>
           <hr className="mt-3 dark:border-gray-700" />
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-4">
@@ -582,37 +510,33 @@ function ModalEditFornecedor({
   );
 }
 
-function ModalDeleteFornecedor({
+function ModalDelete<T extends { nome: string }>({
   open,
   onClose,
-  fornecedor,
+  entity,
   onSuccess,
-}: ModalProps & { fornecedor: Fornecedor | null }) {
+  title,
+  deleteUrl,
+  idKey,
+}: ModalProps & { entity: T | null; deleteUrl: string; idKey: keyof T }) {
   const [loading, setLoading] = useState(false);
 
-  const handleDelete = async () => {
-    if (!fornecedor) return;
-
+  const doDelete = async () => {
+    if (!entity) return;
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/deletes/delete_lente_fornecedor.php",
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_fornecedor: fornecedor.id_fornecedor }),
-        }
-      );
-
+      const resp = await fetch(deleteUrl, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [idKey]: (entity as any)[idKey] }),
+      });
       if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(txt || "Falha ao excluir.");
+        throw new Error((await resp.text()) || "Falha ao excluir.");
       }
-
       onSuccess();
     } catch (err) {
       console.error(err);
-      alert("Não foi possível excluir o fornecedor.");
+      alert("Não foi possível excluir.");
     } finally {
       setLoading(false);
     }
@@ -627,18 +551,17 @@ function ModalDeleteFornecedor({
     >
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative m-4 p-4 w-[min(520px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
+        className="relative m-4 p-4 w-[min(500px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
-          Excluir Fornecedor
+          Excluir {title}
         </div>
         <div className="p-4 text-sm text-slate-700 dark:text-slate-200">
           <p className="mb-2">
             Tem certeza de que deseja{" "}
-            <span className="font-semibold">excluir</span> o fornecedor{" "}
-            <span className="font-semibold">"{fornecedor?.nome}"</span> (ID{" "}
-            {fornecedor?.id_fornecedor})?
+            <span className="font-semibold">excluir</span>{" "}
+            <span className="font-semibold">"{entity?.nome}"</span>?
           </p>
           <p className="text-slate-500 dark:text-slate-400">
             Esta ação não poderá ser desfeita.
@@ -656,7 +579,7 @@ function ModalDeleteFornecedor({
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={doDelete}
             disabled={loading}
             className="rounded-md bg-red-600 py-2 px-4 text-sm text-white shadow-md hover:bg-red-700 disabled:opacity-60"
           >
@@ -664,6 +587,24 @@ function ModalDeleteFornecedor({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ========================
+   Página Principal
+   ======================== */
+export default function Empresas() {
+  return (
+    <div className="h-full">
+      <Section<Empresa>
+        title="Empresa"
+        fetchUrl="http://localhost:81/api/gets/get_empresas.php"
+        createUrl="http://localhost:81/api/creates/create_empresa.php"
+        updateUrl="http://localhost:81/api/updates/update_empresa.php"
+        deleteUrl="http://localhost:81/api/deletes/delete_empresa.php"
+        idKey="id_empresa"
+      />
     </div>
   );
 }

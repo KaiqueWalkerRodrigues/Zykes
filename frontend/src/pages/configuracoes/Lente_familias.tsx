@@ -6,6 +6,7 @@ import { FaGear, FaTrash, FaNewspaper } from "react-icons/fa6";
 import React, { useRef, useEffect, useState } from "react";
 const Lentes = React.lazy(() => import("./Lentes"));
 const Lente_fornecedores = React.lazy(() => import("./Lente_fornecedores"));
+const Lente_tipos = React.lazy(() => import("./Lente_tipos"));
 
 // Definição do tipo Familia
 type Familia = {
@@ -73,20 +74,17 @@ const fetchData = async (
 export default function Lente_familias() {
   const etagRef = useRef<string | null>(null);
   const lastDataRef = useRef<Familia[]>([]);
-
   const [refreshSignal, setRefreshSignal] = useState(0);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedFamilia, setSelectedFamilia] = useState<Familia | null>(null);
-
   const [createOpen, setCreateOpen] = useState(false);
-
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("Item atualizado com sucesso.");
   const [deleteOpen, setDeleteOpen] = useState(false);
-
   const [lentesOpen, setLentesOpen] = useState(false);
   const [fornecedoresOpen, setFornecedoresOpen] = useState(false);
+  const [tiposOpen, setTiposOpen] = useState(false);
 
   // Polling para atualização automática da tabela
   useEffect(() => {
@@ -279,6 +277,13 @@ export default function Lente_familias() {
         <button
           className="rounded-md bg-slate-600 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 transition flex items-center gap-2"
           type="button"
+          onClick={() => setTiposOpen(true)}
+        >
+          Tipos de Lente
+        </button>
+        <button
+          className="rounded-md bg-slate-600 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 transition flex items-center gap-2"
+          type="button"
           onClick={() => setFornecedoresOpen(true)}
         >
           Fornecedores
@@ -288,7 +293,7 @@ export default function Lente_familias() {
           type="button"
           onClick={() => setCreateOpen(true)}
         >
-          Cadastrar
+          Cadastrar Familia
         </button>
       </div>
       <div className="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
@@ -424,6 +429,52 @@ export default function Lente_familias() {
               }
             >
               <Lente_fornecedores />
+            </React.Suspense>
+          </div>
+        </div>
+      </div>
+
+      {/* NOVO: Modal Tipos de Lente */}
+      <div
+        className={`fixed inset-0 z-[70] ${
+          tiposOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        } transition-opacity duration-300`}
+        aria-hidden={!tiposOpen}
+        onClick={() => setTiposOpen(false)}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div
+          className="relative mx-auto my-4 h-[calc(100vh-2rem)] w-[min(1400px,95vw)] rounded-2xl bg-white shadow-xl dark:bg-slate-900 flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+                Tipos de Lente
+              </h2>
+              <p className="text-sm text-slate-500">
+                Gerencie índices e tratamentos de lentes
+              </p>
+            </div>
+            <button
+              onClick={() => setTiposOpen(false)}
+              className="rounded-md border dark:text-slate-200 border-slate-200 dark:border-slate-700 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Fechar
+            </button>
+          </div>
+
+          {/* Conteúdo (carregado sob demanda) */}
+          <div className="flex-1 overflow-hidden">
+            <React.Suspense
+              fallback={
+                <div className="h-full grid place-items-center text-slate-500">
+                  Carregando Tipos de Lente...
+                </div>
+              }
+            >
+              <Lente_tipos />
             </React.Suspense>
           </div>
         </div>
@@ -676,6 +727,7 @@ export function ModalCadastrarFamilia({
   const [idFornecedor, setIdFornecedor] = useState<number | "">("");
   const [fornecedores, setFornecedores] = useState<FornecedorListItem[]>([]);
   const [loadingFornecedores, setLoadingFornecedores] = useState(false);
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -697,6 +749,11 @@ export function ModalCadastrarFamilia({
       setLoading(false);
       load();
     }
+    setTimeout(() => {
+      if (firstInputRef.current) {
+        firstInputRef.current.focus();
+      }
+    }, 100);
     return () => {
       mounted = false;
     };
@@ -773,6 +830,7 @@ export function ModalCadastrarFamilia({
                   Nome *
                 </label>
                 <input
+                  ref={firstInputRef}
                   id="cad-nome"
                   type="text"
                   className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"

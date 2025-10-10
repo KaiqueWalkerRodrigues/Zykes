@@ -23,11 +23,11 @@ const Items: NavItem[] = [
 ];
 
 const interfaceItems: NavItem[] = [
-  {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    subItems: [{ name: "Teste", path: "/dashboard/teste", pro: false }],
-  },
+  // {
+  //   icon: <GridIcon />,
+  //   name: "Dashboard",
+  //   subItems: [{ name: "Teste", path: "/dashboard/teste", pro: false }],
+  // },
 ];
 
 const configItems: NavItem[] = [
@@ -41,22 +41,17 @@ const configItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Tipos de Lente",
-        path: "/configuracoes/lente_tipos",
-        pro: false,
-      },
-      {
         name: "Usuários",
         path: "/configuracoes/usuarios",
         pro: false,
       },
     ],
   },
-  {
-    icon: <FaArchive />,
-    name: "Logs",
-    path: "/logs",
-  },
+  // {
+  //   icon: <FaArchive />,
+  //   name: "Logs",
+  //   path: "/logs",
+  // },
 ];
 
 const AppSidebar: React.FC = () => {

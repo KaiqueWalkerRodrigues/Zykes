@@ -466,6 +466,7 @@ function ModalCreateLente({
 }: ModalProps & { familiaId: number }) {
   const [form, setForm] = useState<Partial<Lente>>({});
   const [loading, setLoading] = useState(false);
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open)
@@ -475,6 +476,11 @@ function ModalCreateLente({
         valor_venda: "",
         valor_compra: "",
       });
+    setTimeout(() => {
+      if (firstInputRef.current) {
+        firstInputRef.current.focus();
+      }
+    }, 100);
   }, [open]);
 
   const submit = async (e: React.FormEvent) => {
@@ -530,6 +536,7 @@ function ModalCreateLente({
                   Índice de Refração *
                 </label>
                 <select
+                  ref={firstInputRef}
                   value={form.id_indice ?? ""}
                   onChange={(e) =>
                     setForm((f) => ({

@@ -15,8 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Garante que só aceite método DELETE
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+// Garante que só aceite método DELETE (corrigido)
+if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
     http_response_code(405);
     echo json_encode([
         "status"  => "error",
@@ -28,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     $pdo = Conexao::pdo();
 
-    // Lê o corpo da requisição (JSON)
     $input = json_decode(file_get_contents("php://input"), true);
 
     if (!isset($input['id_familia'])) {
@@ -41,44 +40,29 @@ try {
     }
 
     $id_familia = (int)$input['id_familia'];
-
     if ($id_familia <= 0) {
         http_response_code(400);
-        echo json_encode([
-            "status"  => "error",
-            "message" => "ID inválido."
-        ]);
+        echo json_encode(["status" => "error", "message" => "ID inválido."]);
         exit;
     }
 
-    // Verifica se o registro existe e ainda não foi deletado
-    $check = $pdo->prepare("SELECT id_familia FROM familias WHERE id_familia = ? AND deleted_at IS NULL");
+    // Existe e não deletada?
+    $check = $pdo->prepare("SELECT id_familia FROM lente_familias WHERE id_familia = ? AND deleted_at IS NULL");
     $check->execute([$id_familia]);
-
     if ($check->rowCount() === 0) {
         http_response_code(404);
-        echo json_encode([
-            "status"  => "error",
-            "message" => "Família não encontrada ou já deletada."
-        ]);
+        echo json_encode(["status" => "error", "message" => "Família não encontrada ou já deletada."]);
         exit;
     }
 
     // Soft Delete
-    $stmt = $pdo->prepare("
-        UPDATE familias
-        SET deleted_at = NOW(), updated_at = NOW()
-        WHERE id_familia = ?
-    ");
+    $stmt = $pdo->prepare("UPDATE lente_familias SET deleted_at = NOW(), updated_at = NOW() WHERE id_familia = ?");
     $stmt->execute([$id_familia]);
 
     echo json_encode([
         "status"  => "success",
         "message" => "Família deletada (soft delete) com sucesso.",
-        "data"    => [
-            "id_familia" => $id_familia,
-            "deleted_at" => date('Y-m-d H:i:s')
-        ]
+        "data"    => ["id_familia" => $id_familia, "deleted_at" => date('Y-m-d H:i:s')]
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 } catch (PDOException $e) {
     http_response_code(500);

@@ -4,11 +4,13 @@ import DataTable from "../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash, FaNewspaper } from "react-icons/fa6";
 import React, { useRef, useEffect, useState } from "react";
+const Lentes = React.lazy(() => import("./Lentes"));
 
 // Definição do tipo Familia
 type Familia = {
   id_familia: number;
   nome: string;
+  id_fornecedor?: number;
   acoes?: string;
 };
 
@@ -29,11 +31,14 @@ const fetchData = async (
     headers["If-None-Match"] = etagRef.current;
   }
 
-  const res = await fetch("http://localhost:81/api/gets/get_familias.php", {
-    method: "GET",
-    headers,
-    cache: "no-cache",
-  });
+  const res = await fetch(
+    "http://localhost:81/api/gets/get_lente_familias.php",
+    {
+      method: "GET",
+      headers,
+      cache: "no-cache",
+    }
+  );
 
   if (res.status === 304) {
     return { data: null, total: null, notModified: true };
@@ -64,7 +69,7 @@ const fetchData = async (
 };
 
 // Componente principal da página
-export default function Familias() {
+export default function Lente_familias() {
   const etagRef = useRef<string | null>(null);
   const lastDataRef = useRef<Familia[]>([]);
 
@@ -79,6 +84,8 @@ export default function Familias() {
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("Item atualizado com sucesso.");
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const [lentesOpen, setLentesOpen] = useState(false);
 
   // Polling para atualização automática da tabela
   useEffect(() => {
@@ -133,9 +140,89 @@ export default function Familias() {
     setTimeout(() => setToastOpen(false), 2500);
   };
 
+  // Cache simples em memória para nomes de fornecedores
+  const fornecedorCache = new Map<number, { nome: string; etag?: string }>();
+
+  async function fetchFornecedorNome(
+    id_fornecedor: number
+  ): Promise<string | null> {
+    if (!id_fornecedor) return null;
+
+    // Se tiver no cache, retorna
+    const cached = fornecedorCache.get(id_fornecedor);
+    if (cached?.nome) return cached.nome;
+
+    // Monta headers (suporte a ETag opcional)
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (cached?.etag) headers["If-None-Match"] = cached.etag;
+
+    const res = await fetch(
+      "http://localhost:81/api/gets/get_lente_fornecedor.php",
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ id_fornecedor }),
+      }
+    );
+
+    if (res.status === 304 && cached) {
+      return cached.nome;
+    }
+
+    if (!res.ok) {
+      console.error("Erro ao buscar fornecedor:", res.status);
+      return null;
+    }
+
+    const etag = res.headers.get("etag") || undefined;
+    const json = await res.json();
+
+    const nome = json?.data?.nome ?? null;
+    if (nome) {
+      fornecedorCache.set(id_fornecedor, { nome, etag });
+    }
+    return nome;
+  }
+
+  function FornecedorNameCell({ id }: { id?: number }) {
+    const [nome, setNome] = useState<string | null>(null);
+    const [loading, setLoading] = useState<boolean>(!!id);
+
+    useEffect(() => {
+      let alive = true;
+      (async () => {
+        if (!id) {
+          setNome(null);
+          setLoading(false);
+          return;
+        }
+        setLoading(true);
+        const n = await fetchFornecedorNome(id);
+        if (alive) {
+          setNome(n);
+          setLoading(false);
+        }
+      })();
+      return () => {
+        alive = false;
+      };
+    }, [id]);
+
+    if (!id) return <span className="text-slate-400">—</span>;
+    if (loading) return <span className="text-slate-400">carregando…</span>;
+    return <span>{nome ?? "Fornecedor não encontrado"}</span>;
+  }
+
   const columns: ColumnDef<Familia>[] = [
     { accessorKey: "id_familia", header: "#" },
     { accessorKey: "nome", header: "Nome" },
+    {
+      accessorKey: "id_fornecedor",
+      header: "Fornecedor",
+      cell: ({ row }) => <FornecedorNameCell id={row.original.id_fornecedor} />,
+    },
     {
       accessorKey: "acoes",
       header: "Ações",
@@ -144,6 +231,11 @@ export default function Familias() {
           <button
             className="rounded-md rounded-r-none bg-blue-600 py-2 px-4 text-sm text-white"
             type="button"
+            onClick={() => {
+              setSelectedFamilia(row.original);
+              setLentesOpen(true);
+            }}
+            title="Gerenciar Lentes"
           >
             <FaNewspaper />
           </button>
@@ -186,7 +278,7 @@ export default function Familias() {
         <button
           className="rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow-md hover:bg-green-700 transition"
           type="button"
-          onClick={() => setCreateOpen(true)} // NOVO
+          onClick={() => setCreateOpen(true)}
         >
           Cadastrar
         </button>
@@ -232,8 +324,82 @@ export default function Familias() {
         message={toastMsg}
         onClose={() => setToastOpen(false)}
       />
+      {/* Modal Lentes */}
+      <div
+        className={`fixed inset-0 z-[70] ${
+          lentesOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        } transition-opacity duration-300`}
+        aria-hidden={!lentesOpen}
+        onClick={() => setLentesOpen(false)}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div
+          className="relative mx-auto my-4 h-[calc(100vh-2rem)] w-[min(1400px,95vw)] rounded-2xl bg-white shadow-xl dark:bg-slate-900 flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+                Lentes — {selectedFamilia?.nome ?? "—"}
+              </h2>
+              <p className="text-sm text-slate-500">
+                Família #{selectedFamilia?.id_familia}
+              </p>
+            </div>
+            <button
+              onClick={() => setLentesOpen(false)}
+              className="rounded-md border dark:text-slate-200 border-slate-200 dark:border-slate-700 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Fechar
+            </button>
+          </div>
+
+          {/* Conteúdo (carregado sob demanda) */}
+          <div className="flex-1 overflow-hidden">
+            <React.Suspense
+              fallback={
+                <div className="h-full grid place-items-center text-slate-500">
+                  Carregando Lentes...
+                </div>
+              }
+            >
+              {selectedFamilia && (
+                <Lentes
+                  familiaId={selectedFamilia.id_familia}
+                  familiaNome={selectedFamilia.nome}
+                />
+              )}
+            </React.Suspense>
+          </div>
+        </div>
+      </div>
+      ;
     </div>
   );
+}
+
+type FornecedorListItem = { id_fornecedor: number; nome: string };
+
+async function getFornecedores(): Promise<FornecedorListItem[]> {
+  const res = await fetch(
+    "http://localhost:81/api/gets/get_lente_fornecedores.php",
+    {
+      method: "GET",
+      cache: "no-cache",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Erro ao buscar fornecedores: ${res.status}`);
+  }
+  const data = await res.json();
+  // espera-se um array [{id_fornecedor, nome, ...}]
+  return Array.isArray(data)
+    ? data.map((f: any) => ({
+        id_fornecedor: Number(f.id_fornecedor),
+        nome: String(f.nome || ""),
+      }))
+    : [];
 }
 
 // Props do modal editar
@@ -252,12 +418,39 @@ export function ModalEditarFamilia({
   onSuccess,
 }: ModalEditarFamiliaProps) {
   const [editedName, setEditedName] = useState("");
+  const [idFornecedor, setIdFornecedor] = useState<number | "">("");
+  const [fornecedores, setFornecedores] = useState<FornecedorListItem[]>([]);
+  const [loadingFornecedores, setLoadingFornecedores] = useState(false);
 
   useEffect(() => {
-    if (familia) {
-      setEditedName(familia.nome || "");
+    let mounted = true;
+    async function load() {
+      try {
+        setLoadingFornecedores(true);
+        const list = await getFornecedores();
+        if (!mounted) return;
+        setFornecedores(list);
+        // seta o fornecedor atual da família se existir
+        if (familia?.id_fornecedor) {
+          setIdFornecedor(Number(familia.id_fornecedor));
+        } else {
+          setIdFornecedor("");
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Não foi possível carregar os fornecedores.");
+      } finally {
+        if (mounted) setLoadingFornecedores(false);
+      }
     }
-  }, [familia]);
+    if (open) {
+      setEditedName(familia?.nome || "");
+      load();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [open, familia]);
 
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (event: React.FormEvent) => {
@@ -267,9 +460,9 @@ export function ModalEditarFamilia({
     try {
       setLoading(true);
       const response = await fetch(
-        "http://localhost:81/api/updates/update_familia.php",
+        "http://localhost:81/api/updates/update_lente_familia.php",
         {
-          method: "POST",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
@@ -345,6 +538,46 @@ export function ModalEditarFamilia({
                   required
                 />
               </div>
+              <div className="col-span-9">
+                <label
+                  htmlFor="editar-id_fornecedor"
+                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
+                >
+                  Fornecedor *
+                </label>
+                <select
+                  id="editar-id_fornecedor"
+                  className="
+                    appearance-none
+                    w-full rounded-md border
+                    bg-white text-slate-700
+                    border-slate-300
+                    px-3 py-2 pr-9 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-slate-400/40 focus:border-slate-400
+
+                    dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600
+                    dark:focus:ring-slate-500/40 dark:focus:border-slate-500
+                  "
+                  value={idFornecedor}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setIdFornecedor(v === "" ? "" : Number(v));
+                  }}
+                  disabled={loadingFornecedores}
+                  required
+                >
+                  {loadingFornecedores ? (
+                    <option value="">Carregando...</option>
+                  ) : (
+                    ""
+                  )}
+                  {fornecedores.map((f) => (
+                    <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                      {f.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
           <hr className="mt-3 dark:border-gray-700" />
@@ -387,24 +620,57 @@ export function ModalCadastrarFamilia({
 }: ModalCadastrarFamiliaProps) {
   const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
+  const [idFornecedor, setIdFornecedor] = useState<number | "">("");
+  const [fornecedores, setFornecedores] = useState<FornecedorListItem[]>([]);
+  const [loadingFornecedores, setLoadingFornecedores] = useState(false);
 
-  // Sempre que abrir o modal, limpa o estado
   useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoadingFornecedores(true);
+        const list = await getFornecedores();
+        if (mounted) setFornecedores(list);
+      } catch (e) {
+        console.error(e);
+        alert("Não foi possível carregar os fornecedores.");
+      } finally {
+        if (mounted) setLoadingFornecedores(false);
+      }
+    }
     if (open) {
       setNome("");
+      setIdFornecedor("");
       setLoading(false);
+      load();
     }
+    return () => {
+      mounted = false;
+    };
   }, [open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = { nome: nome.trim() };
-    if (!payload.nome) return alert("Informe o nome da família.");
+  // CORREÇÃO APLICADA AQUI
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const payload = {
+      nome: nome.trim(),
+      id_fornecedor: typeof idFornecedor === "number" ? idFornecedor : null,
+    };
+
+    if (!payload.nome) {
+      alert("Informe o nome da família.");
+      return;
+    }
+    if (!payload.id_fornecedor) {
+      alert("Selecione um fornecedor.");
+      return;
+    }
 
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/creates/create_familia.php",
+      const response = await fetch(
+        "http://localhost:81/api/creates/create_lente_familia.php",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -412,14 +678,14 @@ export function ModalCadastrarFamilia({
         }
       );
 
-      if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(txt || "Falha ao cadastrar.");
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Falha ao cadastrar: ${errorData}`);
       }
 
-      onSuccess(); // fecha modal, atualiza tabela e mostra toast
-    } catch (err) {
-      console.error(err);
+      onSuccess();
+    } catch (error) {
+      console.error("Erro ao enviar o formulário:", error);
       alert("Não foi possível cadastrar a família.");
     } finally {
       setLoading(false);
@@ -462,6 +728,46 @@ export function ModalCadastrarFamilia({
                   required
                   autoFocus
                 />
+              </div>
+              <div className="col-span-12">
+                <label
+                  htmlFor="cad-id_fornecedor"
+                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
+                >
+                  Fornecedor *
+                </label>
+                <select
+                  id="cad-id_fornecedor"
+                  className="
+                    appearance-none
+                    w-full rounded-md border
+                    bg-white text-slate-700
+                    border-slate-300
+                    px-3 py-2 pr-9 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-slate-400/40 focus:border-slate-400
+
+                    dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600
+                    dark:focus:ring-slate-500/40 dark:focus:border-slate-500
+                  "
+                  value={idFornecedor}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setIdFornecedor(v === "" ? "" : Number(v));
+                  }}
+                  disabled={loadingFornecedores}
+                  required
+                >
+                  <option value="">
+                    {loadingFornecedores
+                      ? "Carregando..."
+                      : "Selecione um fornecedor"}
+                  </option>
+                  {fornecedores.map((f) => (
+                    <option key={f.id_fornecedor} value={f.id_fornecedor}>
+                      {f.nome}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -574,9 +880,9 @@ export function ModalExcluirFamilia({
     try {
       setLoading(true);
       const resp = await fetch(
-        "http://localhost:81/api/deletes/delete_familia.php",
+        "http://localhost:81/api/deletes/delete_lente_familia.php",
         {
-          method: "POST",
+          method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id_familia: familia.id_familia }),
         }

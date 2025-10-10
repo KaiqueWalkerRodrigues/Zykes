@@ -18,7 +18,9 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
-import Familias from "./pages/configuracoes/Familias";
+import Lente_familias from "./pages/configuracoes/Lente_familias";
+import Lente_fornecedores from "./pages/configuracoes/Lente_fornecedores";
+import Lente_tipos from "./pages/configuracoes/Lente_tipos";
 
 export default function App() {
   return (
@@ -36,11 +38,18 @@ export default function App() {
             <Route path="/blank" element={<Blank />} />
 
             {/* Forms */}
-            <Route path="/configuracoes/familias" element={<Familias />} />
-            {/* <Route
-              path="/configuracoes/fornecedores"
-              element={<Fornecedores />}
-            /> */}
+            <Route
+              path="/configuracoes/lente_familias"
+              element={<Lente_familias />}
+            />
+            <Route
+              path="/configuracoes/lente_fornecedores"
+              element={<Lente_fornecedores />}
+            />
+            <Route
+              path="/configuracoes/lente_tipos"
+              element={<Lente_tipos />}
+            />
 
             {/* Forms */}
             <Route path="/form-elements" element={<FormElements />} />

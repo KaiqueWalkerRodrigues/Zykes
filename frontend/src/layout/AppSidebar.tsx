@@ -35,10 +35,26 @@ const configItems: NavItem[] = [
     icon: <FaGear />,
     name: "Configurações",
     subItems: [
-      { name: "Familias", path: "/configuracoes/familias", pro: false },
-      { name: "Fornecedores", path: "/configuracoes/fornecedores", pro: false },
-      // { name: "Usuários", path: "/configuracoes/usuarios", pro: false },
-      // { name: "Vendedores", path: "/configuracoes/vendedores", pro: false },
+      {
+        name: "Familias de Lente",
+        path: "/configuracoes/lente_familias",
+        pro: false,
+      },
+      {
+        name: "Fornecedores de Lente",
+        path: "/configuracoes/lente_fornecedores",
+        pro: false,
+      },
+      {
+        name: "Tipos de Lente",
+        path: "/configuracoes/lente_tipos",
+        pro: false,
+      },
+      {
+        name: "Usuários",
+        path: "/configuracoes/usuarios",
+        pro: false,
+      },
     ],
   },
   {

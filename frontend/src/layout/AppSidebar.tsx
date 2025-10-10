@@ -41,11 +41,6 @@ const configItems: NavItem[] = [
         pro: false,
       },
       {
-        name: "Fornecedores de Lente",
-        path: "/configuracoes/lente_fornecedores",
-        pro: false,
-      },
-      {
         name: "Tipos de Lente",
         path: "/configuracoes/lente_tipos",
         pro: false,

@@ -1,13 +1,11 @@
-import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import PageMeta from "../../components/common/PageMeta";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import DataTable from "../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash } from "react-icons/fa6";
-import React, { useRef, useEffect, useState } from "react";
 
-/* =========================
-   Tipos e utilitários
-========================= */
+/* ========================
+   Tipos
+   ======================== */
 type Fornecedor = {
   id_fornecedor: number;
   nome: string;
@@ -15,10 +13,9 @@ type Fornecedor = {
   acoes?: string;
 };
 
-function isSameData(a: Fornecedor[], b: Fornecedor[]): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
+/* ========================
+   Funções Auxiliares (Helpers)
+   ======================== */
 function onlyDigits(v: string) {
   return (v || "").replace(/\D+/g, "");
 }
@@ -33,14 +30,78 @@ function maskCNPJ(v: string) {
   return out;
 }
 
-// Validação simples: 14 dígitos (se quiser, posso colocar a checagem completa dos dígitos verificadores)
 function isValidCNPJ(v: string) {
   return onlyDigits(v).length === 14;
 }
 
-/* =========================
-   Fetch da API com ETag
-========================= */
+function isSameData(a: Fornecedor[], b: Fornecedor[]): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/* ========================
+   Componentes Auxiliares
+   ======================== */
+function Toast({
+  open,
+  message,
+  onClose,
+}: {
+  open: boolean;
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className={`fixed top-6 left-1/2 -translate-x-1/2 z-[90] transition-all duration-300 ${
+        open
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 -translate-y-5 pointer-events-none"
+      }`}
+      role="alert"
+    >
+      <div className="flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow-sm dark:text-gray-400 dark:bg-gray-800">
+        <div className="inline-flex items-center justify-center shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
+          <svg
+            className="w-5 h-5"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+          </svg>
+        </div>
+        <div className="ms-3 text-sm font-normal">{message}</div>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="ms-auto -mx-1.5 -my-1.5 bg-transparent text-gray-400 hover:text-gray-900 rounded-lg p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700"
+        >
+          <svg
+            className="w-3 h-3"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 14 14"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ========================
+   Função para buscar dados da API
+   ======================== */
 const fetchData = async (
   page: number,
   pageSize: number,
@@ -94,25 +155,21 @@ const fetchData = async (
   return { data: paginated, total, notModified: false };
 };
 
-/* =========================
-   Página principal
-========================= */
+/* ========================
+   Página Fornecedores
+   ======================== */
 export default function Lente_fornecedores() {
   const etagRef = useRef<string | null>(null);
   const lastDataRef = useRef<Fornecedor[]>([]);
 
   const [refreshSignal, setRefreshSignal] = useState(0);
   const [search, setSearch] = useState("");
-
-  const [modalEditOpen, setModalEditOpen] = useState(false);
-  const [modalCreateOpen, setModalCreateOpen] = useState(false);
-  const [modalDeleteOpen, setModalDeleteOpen] = useState(false);
-
-  const [selectedFornecedor, setSelectedFornecedor] =
-    useState<Fornecedor | null>(null);
-
   const [toastOpen, setToastOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState("Ação realizada com sucesso.");
+  const [toastMsg, setToastMsg] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selected, setSelected] = useState<Fornecedor | null>(null);
 
   // Polling com ETag
   useEffect(() => {
@@ -134,133 +191,132 @@ export default function Lente_fornecedores() {
     return () => clearInterval(interval);
   }, [search]);
 
-  const ack = (msg: string) => {
-    setToastMsg(msg);
+  // Callbacks de sucesso
+  const onCreated = () => {
+    setCreateOpen(false);
+    setToastMsg("Fornecedor cadastrado com sucesso.");
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 2500);
+    setRefreshSignal((prev) => prev + 1);
   };
 
-  const onCreated = () => {
-    setModalCreateOpen(false);
-    setRefreshSignal((k) => k + 1);
-    ack("Fornecedor cadastrado com sucesso.");
-  };
   const onUpdated = () => {
-    setModalEditOpen(false);
-    setRefreshSignal((k) => k + 1);
-    ack("Fornecedor atualizado com sucesso.");
-  };
-  const onDeleted = () => {
-    setModalDeleteOpen(false);
-    setSelectedFornecedor(null);
-    setRefreshSignal((k) => k + 1);
-    ack("Fornecedor excluído com sucesso.");
+    setEditOpen(false);
+    setToastMsg("Fornecedor atualizado com sucesso.");
+    setToastOpen(true);
+    setTimeout(() => setToastOpen(false), 2500);
+    setRefreshSignal((prev) => prev + 1);
   };
 
-  const columns: ColumnDef<Fornecedor>[] = [
-    { accessorKey: "id_fornecedor", header: "#" },
-    { accessorKey: "nome", header: "Nome" },
-    {
-      accessorKey: "cnpj",
-      header: "CNPJ",
-      cell: ({ getValue }) => {
-        const v = String(getValue() ?? "");
-        return <span className="font-mono">{maskCNPJ(v)}</span>;
+  const onDeleted = () => {
+    setDeleteOpen(false);
+    setSelected(null);
+    setToastMsg("Fornecedor excluído com sucesso.");
+    setToastOpen(true);
+    setTimeout(() => setToastOpen(false), 2500);
+    setRefreshSignal((prev) => prev + 1);
+  };
+
+  const columns = useMemo<ColumnDef<Fornecedor>[]>(
+    () => [
+      { accessorKey: "id_fornecedor", header: "#" },
+      { accessorKey: "nome", header: "Nome" },
+      {
+        accessorKey: "cnpj",
+        header: "CNPJ",
+        cell: ({ getValue }) => {
+          const v = String(getValue() ?? "");
+          return <span className="font-mono">{maskCNPJ(v)}</span>;
+        },
       },
-    },
-    {
-      accessorKey: "acoes",
-      header: "Ações",
-      cell: ({ row }) => (
-        <div className="row flex">
-          <button
-            className="rounded-md rounded-r-none bg-slate-600 py-2 px-4 border-x border-slate-700 text-sm text-white"
-            type="button"
-            title="Editar"
-            onClick={() => {
-              setSelectedFornecedor(row.original);
-              setModalEditOpen(true);
-            }}
-          >
-            <FaGear />
-          </button>
-          <button
-            className="rounded-md rounded-l-none bg-red-600 py-2 px-4 text-sm text-white"
-            type="button"
-            title="Excluir"
-            onClick={() => {
-              setSelectedFornecedor(row.original);
-              setModalDeleteOpen(true);
-            }}
-          >
-            <FaTrash />
-          </button>
-        </div>
-      ),
-    },
-  ];
+      {
+        accessorKey: "acoes",
+        header: "Ações",
+        cell: ({ row }) => (
+          <div className="flex">
+            <button
+              className="rounded-md rounded-r-none bg-slate-700 py-2 px-3 text-sm text-white"
+              onClick={() => {
+                setSelected(row.original);
+                setEditOpen(true);
+              }}
+              title="Editar Fornecedor"
+              type="button"
+            >
+              <FaGear />
+            </button>
+            <button
+              className="rounded-md rounded-l-none bg-red-600 py-2 px-3 text-sm text-white"
+              onClick={() => {
+                setSelected(row.original);
+                setDeleteOpen(true);
+              }}
+              title="Excluir Fornecedor"
+              type="button"
+            >
+              <FaTrash />
+            </button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
-    <div>
-      <PageMeta
-        title="Configurações Fornecedores"
-        description="Gerencie os fornecedores."
-      />
-      <PageBreadcrumb
-        items={[
-          { label: "Home", to: "/" },
-          { label: "Configurações", to: "/" },
-          { label: "Fornecedores", to: "/configuracoes/fornecedores" },
-        ]}
-      />
-
-      <div className="flex justify-end mb-4">
-        <button
-          className="rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow-md hover:bg-green-700 transition"
-          type="button"
-          onClick={() => setModalCreateOpen(true)}
-        >
-          Cadastrar
-        </button>
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between px-6 py-4">
+        <div className="text-sm text-slate-500">
+          Gerenciamento de Fornecedores
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className="inline-flex items-center gap-2 rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow hover:bg-green-800"
+            onClick={() => setCreateOpen(true)}
+            type="button"
+          >
+            Cadastrar Fornecedor
+          </button>
+        </div>
       </div>
 
-      <div className="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
-        <DataTable
-          columns={columns}
-          fetchData={async (page, pageSize, s) => {
-            const r = await fetchData(page, pageSize, s, etagRef);
-            if (r?.data && !r.notModified) {
-              lastDataRef.current = r.data;
-            }
-            return r?.notModified ? { data: [], total: 0 } : r;
-          }}
-          pageSize={10}
-          search={search}
-          setSearch={setSearch}
-          refreshSignal={refreshSignal}
-        />
+      <div className="flex-1 overflow-auto px-6 pb-6">
+        <div className="rounded-2xl border border-gray-200 bg-white px-5 py-6 dark:border-gray-800 dark:bg-slate-900">
+          <DataTable
+            columns={columns}
+            fetchData={async (page, pageSize, s) => {
+              const r = await fetchData(page, pageSize, s, etagRef);
+              if (r?.data && !r.notModified) {
+                lastDataRef.current = r.data;
+              }
+              return r?.notModified ? { data: [], total: 0 } : r;
+            }}
+            pageSize={10}
+            search={search}
+            setSearch={setSearch}
+            refreshSignal={refreshSignal}
+          />
+        </div>
       </div>
 
-      {/* Modais */}
-      <ModalCadastrarFornecedor
-        open={modalCreateOpen}
-        onClose={() => setModalCreateOpen(false)}
+      <ModalCreateFornecedor
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
         onSuccess={onCreated}
       />
-      <ModalEditarFornecedor
-        open={modalEditOpen}
-        onClose={() => setModalEditOpen(false)}
-        fornecedor={selectedFornecedor}
+      <ModalEditFornecedor
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        fornecedor={selected}
         onSuccess={onUpdated}
       />
-      <ModalExcluirFornecedor
-        open={modalDeleteOpen}
-        onClose={() => setModalDeleteOpen(false)}
-        fornecedor={selectedFornecedor}
+      <ModalDeleteFornecedor
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        fornecedor={selected}
         onSuccess={onDeleted}
       />
-
-      <ToastSuccess
+      <Toast
         open={toastOpen}
         message={toastMsg}
         onClose={() => setToastOpen(false)}
@@ -268,21 +324,16 @@ export default function Lente_fornecedores() {
     </div>
   );
 }
-
 /* =========================
-   Modal: Cadastrar
-========================= */
-type ModalCadastrarFornecedorProps = {
+   Modais de Fornecedor
+   ========================= */
+type ModalProps = {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 };
 
-export function ModalCadastrarFornecedor({
-  open,
-  onClose,
-  onSuccess,
-}: ModalCadastrarFornecedorProps) {
+function ModalCreateFornecedor({ open, onClose, onSuccess }: ModalProps) {
   const [nome, setNome] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [loading, setLoading] = useState(false);
@@ -298,6 +349,7 @@ export function ModalCadastrarFornecedor({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = { nome: nome.trim(), cnpj: onlyDigits(cnpj) };
+
     if (!payload.nome) return alert("Informe o nome.");
     if (!isValidCNPJ(payload.cnpj))
       return alert("CNPJ inválido (precisa ter 14 dígitos).");
@@ -312,10 +364,12 @@ export function ModalCadastrarFornecedor({
           body: JSON.stringify(payload),
         }
       );
+
       if (!resp.ok) {
         const txt = await resp.text();
         throw new Error(txt || "Falha ao cadastrar.");
       }
+
       onSuccess();
     } catch (err) {
       console.error(err);
@@ -327,33 +381,27 @@ export function ModalCadastrarFornecedor({
 
   return (
     <div
-      className={`fixed inset-0 z-[3] grid h-screen w-screen place-items-center transition-opacity duration-300 ${
-        open
-          ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"
+      className={`fixed inset-0 z-[80] grid place-items-center transition-opacity ${
+        open ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative m-4 p-4 w-2/5 min-w-[320px] rounded-lg bg-white shadow-lg dark:bg-gray-900"
+        className="relative m-4 p-4 w-[min(600px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit}>
-          <div className="flex items-center pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
+          <div className="pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
             Cadastrar Fornecedor
           </div>
           <div className="p-4">
-            <div className="grid grid-cols-24 gap-4">
-              <div className="col-span-12">
-                <label
-                  htmlFor="cad-nome"
-                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
-                >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-1">
+                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
                   Nome *
                 </label>
                 <input
-                  id="cad-nome"
                   type="text"
                   className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"
                   value={nome}
@@ -362,15 +410,11 @@ export function ModalCadastrarFornecedor({
                   autoFocus
                 />
               </div>
-              <div className="col-span-12">
-                <label
-                  htmlFor="cad-cnpj"
-                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
-                >
+              <div className="col-span-1">
+                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
                   CNPJ *
                 </label>
                 <input
-                  id="cad-cnpj"
                   type="text"
                   inputMode="numeric"
                   className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600 font-mono"
@@ -383,19 +427,19 @@ export function ModalCadastrarFornecedor({
             </div>
           </div>
           <hr className="mt-3 dark:border-gray-700" />
-          <div className="flex items-center justify-end gap-2 pt-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm transition-all text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
               disabled={loading}
+              className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow-md transition-all hover:bg-green-800 disabled:opacity-60"
               disabled={loading}
+              className="rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow-md hover:bg-green-800 disabled:opacity-60"
             >
               {loading ? "Cadastrando..." : "Cadastrar"}
             </button>
@@ -406,22 +450,12 @@ export function ModalCadastrarFornecedor({
   );
 }
 
-/* =========================
-   Modal: Editar
-========================= */
-type ModalEditarFornecedorProps = {
-  open: boolean;
-  onClose: () => void;
-  fornecedor: Fornecedor | null;
-  onSuccess: () => void;
-};
-
-export function ModalEditarFornecedor({
+function ModalEditFornecedor({
   open,
   onClose,
   fornecedor,
   onSuccess,
-}: ModalEditarFornecedorProps) {
+}: ModalProps & { fornecedor: Fornecedor | null }) {
   const [nome, setNome] = useState("");
   const [cnpj, setCnpj] = useState("");
   const [loading, setLoading] = useState(false);
@@ -436,11 +470,13 @@ export function ModalEditarFornecedor({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fornecedor) return;
+
     const payload = {
       id_fornecedor: fornecedor.id_fornecedor,
       nome: nome.trim(),
       cnpj: onlyDigits(cnpj),
     };
+
     if (!payload.nome) return alert("Informe o nome.");
     if (!isValidCNPJ(payload.cnpj))
       return alert("CNPJ inválido (precisa ter 14 dígitos).");
@@ -455,10 +491,12 @@ export function ModalEditarFornecedor({
           body: JSON.stringify(payload),
         }
       );
+
       if (!resp.ok) {
         const txt = await resp.text();
         throw new Error(txt || "Falha ao atualizar.");
       }
+
       onSuccess();
     } catch (err) {
       console.error(err);
@@ -470,89 +508,63 @@ export function ModalEditarFornecedor({
 
   return (
     <div
-      className={`fixed inset-0 z-[2] grid h-screen w-screen place-items-center transition-opacity duration-300 ${
-        open
-          ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"
+      className={`fixed inset-0 z-[81] grid place-items-center transition-opacity ${
+        open ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative m-4 p-4 w-2/5 min-w={[320]} rounded-lg bg-white shadow-lg dark:bg-gray-900"
+        className="relative m-4 p-4 w-[min(600px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit}>
-          <div className="flex items-center pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
-            Editar Fornecedor (
-            <span id="editar-titulo">{fornecedor?.nome}</span>)
+          <div className="pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
+            Editar Fornecedor ({fornecedor?.nome})
           </div>
           <div className="p-4">
-            <div className="grid grid-cols-24 gap-4">
-              <div className="col-span-3">
-                <label
-                  htmlFor="editar-id"
-                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
-                >
-                  ID
-                </label>
-                <input
-                  id="editar-id"
-                  type="text"
-                  value={fornecedor?.id_fornecedor ?? ""}
-                  readOnly
-                  className="bg-slate-200 dark:bg-slate-700 block placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"
-                />
-              </div>
-              <div className="col-span-10">
-                <label
-                  htmlFor="editar-nome"
-                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
-                >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-1">
+                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
                   Nome *
                 </label>
                 <input
-                  id="editar-nome"
                   type="text"
+                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   required
-                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"
                 />
               </div>
-              <div className="col-span-10">
-                <label
-                  htmlFor="editar-cnpj"
-                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
-                >
+              <div className="col-span-1">
+                <label className="mb-2 text-sm text-slate-800 dark:text-slate-200">
                   CNPJ *
                 </label>
                 <input
-                  id="editar-cnpj"
                   type="text"
                   inputMode="numeric"
+                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600 font-mono"
                   value={cnpj}
                   onChange={(e) => setCnpj(maskCNPJ(e.target.value))}
                   required
-                  className="bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600 font-mono"
                 />
               </div>
             </div>
           </div>
           <hr className="mt-3 dark:border-gray-700" />
-          <div className="flex items-center justify-end gap-2 pt-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-4">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm transition-all text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+              className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-slate-700 py-2 px-4 text-sm text-white shadow-md transition-all hover:bg-slate-700 disabled:opacity-60"
+              className="rounded-md bg-slate-700 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 disabled:opacity-60"
             >
               {loading ? "Salvando..." : "Salvar Alterações"}
             </button>
@@ -563,26 +575,17 @@ export function ModalEditarFornecedor({
   );
 }
 
-/* =========================
-   Modal: Excluir
-========================= */
-type ModalExcluirFornecedorProps = {
-  open: boolean;
-  onClose: () => void;
-  fornecedor: Fornecedor | null;
-  onSuccess: () => void;
-};
-
-export function ModalExcluirFornecedor({
+function ModalDeleteFornecedor({
   open,
   onClose,
   fornecedor,
   onSuccess,
-}: ModalExcluirFornecedorProps) {
+}: ModalProps & { fornecedor: Fornecedor | null }) {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
     if (!fornecedor) return;
+
     try {
       setLoading(true);
       const resp = await fetch(
@@ -593,10 +596,12 @@ export function ModalExcluirFornecedor({
           body: JSON.stringify({ id_fornecedor: fornecedor.id_fornecedor }),
         }
       );
+
       if (!resp.ok) {
         const txt = await resp.text();
         throw new Error(txt || "Falha ao excluir.");
       }
+
       onSuccess();
     } catch (err) {
       console.error(err);
@@ -608,42 +613,37 @@ export function ModalExcluirFornecedor({
 
   return (
     <div
-      className={`fixed inset-0 z-[4] grid h-screen w-screen place-items-center transition-opacity duration-300 ${
-        open
-          ? "opacity-100 pointer-events-auto"
-          : "opacity-0 pointer-events-none"
+      className={`fixed inset-0 z-[82] grid place-items-center transition-opacity ${
+        open ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/50" aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative m-4 p-4 w-2/5 min-w-[320px] rounded-lg bg-white shadow-lg dark:bg-gray-900"
+        className="relative m-4 p-4 w-[min(520px,95vw)] rounded-lg bg-white shadow-lg dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
+        <div className="pb-4 text-xl font-medium text-slate-800 dark:text-slate-200">
           Excluir Fornecedor
         </div>
-
         <div className="p-4 text-sm text-slate-700 dark:text-slate-200">
           <p className="mb-2">
             Tem certeza de que deseja{" "}
             <span className="font-semibold">excluir</span> o fornecedor{" "}
-            <span className="font-semibold">“{fornecedor?.nome}”</span> (ID{" "}
+            <span className="font-semibold">"{fornecedor?.nome}"</span> (ID{" "}
             {fornecedor?.id_fornecedor})?
           </p>
           <p className="text-slate-500 dark:text-slate-400">
             Esta ação não poderá ser desfeita.
           </p>
         </div>
-
         <hr className="mt-3 dark:border-gray-700" />
-
-        <div className="flex items-center justify-end gap-2 pt-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm transition-all text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
             disabled={loading}
+            className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             Cancelar
           </button>
@@ -651,79 +651,11 @@ export function ModalExcluirFornecedor({
             type="button"
             onClick={handleDelete}
             disabled={loading}
-            className="rounded-md bg-red-600 py-2 px-4 text-sm text-white shadow-md transition-all hover:bg-red-700 disabled:opacity-60"
+            className="rounded-md bg-red-600 py-2 px-4 text-sm text-white shadow-md hover:bg-red-700 disabled:opacity-60"
           >
             {loading ? "Excluindo..." : "Excluir"}
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/* =========================
-   Toast
-========================= */
-function ToastSuccess({
-  open,
-  message,
-  onClose,
-}: {
-  open: boolean;
-  message: string;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className={`fixed top-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 ${
-        open
-          ? "opacity-100 translate-y-0"
-          : "opacity-0 -translate-y-5 pointer-events-none"
-      }`}
-      role="alert"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      <div
-        id="toast-success"
-        className="flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow-sm dark:text-gray-400 dark:bg-gray-800"
-      >
-        <div className="inline-flex items-center justify-center shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
-          <svg
-            className="w-5 h-5"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
-          </svg>
-          <span className="sr-only">Check icon</span>
-        </div>
-        <div className="ms-3 text-sm font-normal">{message}</div>
-        <button
-          type="button"
-          aria-label="Close"
-          onClick={onClose}
-          className="ms-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700"
-        >
-          <span className="sr-only">Close</span>
-          <svg
-            className="w-3 h-3"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 14 14"
-          >
-            <path
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-            />
-          </svg>
-        </button>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash, FaNewspaper } from "react-icons/fa6";
 import React, { useRef, useEffect, useState } from "react";
 const Lentes = React.lazy(() => import("./Lentes"));
+const Lente_fornecedores = React.lazy(() => import("./Lente_fornecedores"));
 
 // Definição do tipo Familia
 type Familia = {
@@ -78,7 +79,6 @@ export default function Lente_familias() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedFamilia, setSelectedFamilia] = useState<Familia | null>(null);
 
-  // NOVO: modal de cadastro
   const [createOpen, setCreateOpen] = useState(false);
 
   const [toastOpen, setToastOpen] = useState(false);
@@ -86,6 +86,7 @@ export default function Lente_familias() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [lentesOpen, setLentesOpen] = useState(false);
+  const [fornecedoresOpen, setFornecedoresOpen] = useState(false);
 
   // Polling para atualização automática da tabela
   useEffect(() => {
@@ -274,9 +275,16 @@ export default function Lente_familias() {
           { label: "Familias", to: "/configuracoes/familias" },
         ]}
       />
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-2 mb-4">
         <button
-          className="rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow-md hover:bg-green-700 transition"
+          className="rounded-md bg-slate-600 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 transition flex items-center gap-2"
+          type="button"
+          onClick={() => setFornecedoresOpen(true)}
+        >
+          Fornecedores
+        </button>
+        <button
+          className="rounded-md bg-green-700 py-2 px-4 text-sm text-white shadow-md hover:bg-green-800 transition flex items-center gap-2"
           type="button"
           onClick={() => setCreateOpen(true)}
         >
@@ -374,7 +382,52 @@ export default function Lente_familias() {
           </div>
         </div>
       </div>
-      ;
+
+      {/* NOVO: Modal Fornecedores */}
+      <div
+        className={`fixed inset-0 z-[70] ${
+          fornecedoresOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        } transition-opacity duration-300`}
+        aria-hidden={!fornecedoresOpen}
+        onClick={() => setFornecedoresOpen(false)}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div
+          className="relative mx-auto my-4 h-[calc(100vh-2rem)] w-[min(1400px,95vw)] rounded-2xl bg-white shadow-xl dark:bg-slate-900 flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+                Fornecedores
+              </h2>
+              <p className="text-sm text-slate-500">
+                Gerenciar fornecedores de lentes
+              </p>
+            </div>
+            <button
+              onClick={() => setFornecedoresOpen(false)}
+              className="rounded-md border dark:text-slate-200 border-slate-200 dark:border-slate-700 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Fechar
+            </button>
+          </div>
+
+          {/* Conteúdo (carregado sob demanda) */}
+          <div className="flex-1 overflow-hidden">
+            <React.Suspense
+              fallback={
+                <div className="h-full grid place-items-center text-slate-500">
+                  Carregando Fornecedores...
+                </div>
+              }
+            >
+              <Lente_fornecedores />
+            </React.Suspense>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

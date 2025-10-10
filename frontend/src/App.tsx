@@ -6,6 +6,7 @@ import Login from "./pages/AuthPages/Login";
 import Logout from "./pages/AuthPages/Logout";
 import NotFound from "./pages/OtherPage/NotFound";
 import Home from "./pages/Dashboard/Home";
+import Caixa from "./pages/Caixa";
 import Lente_familias from "./pages/configuracoes/Lente_familias";
 import Usuarios from "./pages/configuracoes/Usuarios";
 import LineChart from "./pages/Charts/LineChart";
@@ -38,6 +39,8 @@ export default function App() {
               {/* Todas as rotas abaixo estão agora protegidas */}
               <Route element={<AppLayout />}>
                 <Route index path="/" element={<Home />} />
+
+                <Route index path="/caixa" element={<Caixa />} />
 
                 {/* Forms */}
                 <Route

@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
-import { ChevronDownIcon, HorizontaLDots, GridIcon } from "../icons";
-import { FaHome, FaArchive } from "react-icons/fa";
+import { ChevronDownIcon, HorizontaLDots } from "../icons";
+import { LuPiggyBank } from "react-icons/lu";
+import { FaHome } from "react-icons/fa";
 import { FaGear } from "react-icons/fa6";
 import { useSidebar } from "../context/SidebarContext";
 
@@ -28,6 +29,11 @@ const interfaceItems: NavItem[] = [
   //   name: "Dashboard",
   //   subItems: [{ name: "Teste", path: "/dashboard/teste", pro: false }],
   // },
+  {
+    icon: <LuPiggyBank />,
+    name: "Caixa",
+    path: "/caixa",
+  },
 ];
 
 const configItems: NavItem[] = [

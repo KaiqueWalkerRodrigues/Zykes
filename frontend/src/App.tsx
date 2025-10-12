@@ -9,6 +9,8 @@ import Home from "./pages/Dashboard/Home";
 import Caixa from "./pages/Caixa";
 import Lente_familias from "./pages/configuracoes/Lente_familias";
 import Usuarios from "./pages/configuracoes/Usuarios";
+import BlankPage from "./pages/Blank";
+
 import LineChart from "./pages/Charts/LineChart";
 import BarChart from "./pages/Charts/BarChart";
 
@@ -48,6 +50,8 @@ export default function App() {
                   element={<Lente_familias />}
                 />
                 <Route path="/configuracoes/usuarios" element={<Usuarios />} />
+
+                <Route path="/blank" element={<BlankPage />} />
 
                 {/* Charts */}
                 <Route path="/line-chart" element={<LineChart />} />

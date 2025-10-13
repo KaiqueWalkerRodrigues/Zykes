@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import PageMeta from "../components/common/PageMeta";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import {
@@ -10,15 +10,11 @@ import {
   FaFileInvoiceDollar,
   FaWallet,
   FaBuilding,
+  FaExclamationTriangle,
 } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext"; // Importação correta
+import { useAuth } from "../context/AuthContext";
 
 // --- Tipos de Dados ---
-type UserType = {
-  id_usuario: number;
-  nome: string;
-};
-
 type EmpresaType = {
   id_empresa: number;
   nome: string;
@@ -38,7 +34,7 @@ type CaixaType = {
 };
 
 type CaixaStateType = {
-  status: "loading" | "aberto" | "fechado" | "error";
+  status: "loading" | "aberto" | "fechado" | "error" | "idle";
   data: CaixaType | null;
 };
 
@@ -50,8 +46,8 @@ type VendaCaixa = {
   nome_cliente: string;
 };
 
-// --- Componentes View (Abrir, Caixa Aberto) ---
-// (Nenhuma alteração nos componentes AbrirCaixaView e CaixaAbertoView)
+// --- Componentes ---
+
 const AbrirCaixaView = ({
   onAbrirCaixaRequest,
   isLoading,
@@ -213,66 +209,6 @@ const CaixaAbertoView = ({
         >
           <FaDoorClosed /> Fechar Caixa
         </button>
-      </div>
-    </div>
-  );
-};
-
-// --- Outros Componentes (ModalSelecionarEmpresa, ModalFecharCaixa, ListaVendasCaixa) ---
-// (Nenhuma alteração nestes componentes)
-const ModalSelecionarEmpresa = ({
-  open,
-  onClose,
-  empresas,
-  onSelect,
-}: {
-  open: boolean;
-  onClose: () => void;
-  empresas: EmpresaType[];
-  onSelect: (id_empresa: number) => void;
-}) => {
-  if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[80] grid place-items-center transition-opacity duration-300 bg-black/50"
-      onClick={onClose}
-    >
-      <div
-        className="relative m-4 p-6 w-full max-w-md rounded-lg bg-white shadow-lg dark:bg-gray-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between pb-4 border-b dark:border-gray-700">
-          <div>
-            <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
-              Selecionar Empresa
-            </h3>
-            <p className="text-sm text-slate-500">
-              Escolha a empresa para abrir o caixa.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
-          >
-            <FaTimesCircle />
-          </button>
-        </div>
-        <div className="py-6 space-y-3">
-          {empresas.map((empresa) => (
-            <button
-              key={empresa.id_empresa}
-              onClick={() => onSelect(empresa.id_empresa)}
-              className="w-full text-left p-4 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition flex items-center gap-3"
-            >
-              <FaBuilding className="text-slate-500" />
-              <span className="font-medium text-slate-700 dark:text-slate-200">
-                {empresa.nome}
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -517,58 +453,137 @@ const ListaVendasCaixa = ({
   );
 };
 
-// --- Componente Principal (ALTAMENTE MODIFICADO) ---
+// NOVO: Componente Toast de Sucesso
+function ToastSuccess({
+  open,
+  message,
+  onClose,
+}: {
+  open: boolean;
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className={`fixed top-6 left-1/2 -translate-x-1/2 z-[80] transition-all duration-300 ${
+        open
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 -translate-y-5 pointer-events-none"
+      }`}
+      role="alert"
+    >
+      <div
+        id="toast-success"
+        className="flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow-lg dark:text-gray-400 dark:bg-gray-800"
+      >
+        <div className="inline-flex items-center justify-center shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
+          <svg
+            className="w-5 h-5"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z" />
+          </svg>
+          <span className="sr-only">Check icon</span>
+        </div>
+        <div className="ms-3 text-sm font-normal">{message}</div>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="ms-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700"
+        >
+          <span className="sr-only">Close</span>
+          <svg
+            className="w-3 h-3"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 14 14"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// --- Componente Principal ---
 export default function Caixa() {
-  // 1. Corrigir a desestruturação do useAuth para pegar 'isLoading' e renomeá-lo
   const { user, isLoading: authLoading } = useAuth();
 
-  // 2. Reintroduzir o estado local para a empresa atual
-  const [currentEmpresa, setCurrentEmpresa] = useState<EmpresaType | null>(
+  // Estados da página
+  const [userEmpresas, setUserEmpresas] = useState<EmpresaType[]>([]);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<EmpresaType | null>(
     null
   );
-
-  // Estados específicos da página
+  const [empresasLoading, setEmpresasLoading] = useState(true);
   const [caixaState, setCaixaState] = useState<CaixaStateType>({
-    status: "loading",
+    status: "idle",
     data: null,
   });
+  const [aberturaLoading, setAberturaLoading] = useState(false);
   const [isFecharModalOpen, setFecharModalOpen] = useState(false);
   const [vendas, setVendas] = useState<VendaCaixa[]>([]);
   const [vendasLoading, setVendasLoading] = useState(true);
   const [vendasError, setVendasError] = useState<string | null>(null);
-  const [isEmpresaModalOpen, setEmpresaModalOpen] = useState(false);
-  const [empresasParaSelecao, setEmpresasParaSelecao] = useState<EmpresaType[]>(
-    []
-  );
-  const [dadosParaAbertura, setDadosParaAbertura] = useState<{
-    saldo: number;
-    observacao: string;
-  } | null>(null);
-  const [aberturaLoading, setAberturaLoading] = useState(false);
 
-  // 3. Reintroduzir o useEffect para carregar a empresa do localStorage
+  // NOVO: Estados para o Toast
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+
+  // Efeito para buscar as empresas do usuário
   useEffect(() => {
-    try {
-      const dataString = localStorage.getItem("local_data");
-      if (dataString) {
-        const parsedData = JSON.parse(dataString);
-        // O `user` vem do AuthContext, mas a `empresa_selecionada` vem daqui
-        setCurrentEmpresa(parsedData.empresa_selecionada || null);
-      }
-    } catch (error) {
-      console.error("Falha ao carregar empresa do localStorage:", error);
-      setCurrentEmpresa(null); // Garante estado limpo em caso de erro
-    }
-  }, []);
+    const fetchUserEmpresas = async () => {
+      if (!user) return;
+      setEmpresasLoading(true);
+      try {
+        const response = await fetch(
+          `http://localhost:81/api/gets/get_usuario.php?id_usuario=${user.id_usuario}`
+        );
+        const userData = await response.json();
+        if (!userData || !userData.empresas) {
+          throw new Error("Não foi possível buscar as empresas do usuário.");
+        }
+        const empresasDoUsuario: EmpresaType[] = userData.empresas;
+        setUserEmpresas(empresasDoUsuario);
 
-  // Função para verificar o caixa da empresa ATIVA
-  const verificarCaixa = async () => {
-    if (!currentEmpresa) return;
+        if (empresasDoUsuario.length >= 1) {
+          setSelectedEmpresa(empresasDoUsuario[0]);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar empresas do usuário:", error);
+        setUserEmpresas([]);
+      } finally {
+        setEmpresasLoading(false);
+      }
+    };
+
+    if (!authLoading && user) {
+      fetchUserEmpresas();
+    }
+  }, [authLoading, user]);
+
+  // ALTERADO: Lógica de verificação movida para uma função `useCallback`
+  const verificarCaixa = useCallback(async () => {
+    if (!selectedEmpresa) {
+      setCaixaState({ status: "idle", data: null });
+      return;
+    }
 
     setCaixaState({ status: "loading", data: null });
     try {
       const response = await fetch(
-        `http://localhost:81/api/gets/verificar_caixa_aberto.php?id_empresa=${currentEmpresa.id_empresa}`,
+        `http://localhost:81/api/gets/verificar_caixa_aberto.php?id_empresa=${selectedEmpresa.id_empresa}`,
         { method: "GET", cache: "no-cache" }
       );
       if (!response.ok) throw new Error("Falha na comunicação com o servidor.");
@@ -585,17 +600,14 @@ export default function Caixa() {
       console.error("Erro ao verificar o caixa:", error);
       setCaixaState({ status: "error", data: null });
     }
-  };
+  }, [selectedEmpresa]);
 
-  // Efeito para verificar o caixa quando a empresa mudar
+  // Efeito que chama a verificação quando a empresa muda
   useEffect(() => {
-    // Só verifica o caixa se a autenticação já terminou e se temos uma empresa
-    if (!authLoading && currentEmpresa?.id_empresa) {
-      verificarCaixa();
-    }
-  }, [currentEmpresa?.id_empresa, authLoading]);
+    verificarCaixa();
+  }, [verificarCaixa]);
 
-  // Efeito para buscar as vendas do caixa aberto
+  // Efeito para buscar as vendas do caixa aberto (sem alteração)
   useEffect(() => {
     const fetchVendas = async (idCaixa: number) => {
       setVendasLoading(true);
@@ -613,6 +625,7 @@ export default function Caixa() {
         setVendasLoading(false);
       }
     };
+
     if (caixaState.status === "aberto" && caixaState.data?.id_caixa) {
       fetchVendas(caixaState.data.id_caixa);
     } else {
@@ -620,55 +633,17 @@ export default function Caixa() {
     }
   }, [caixaState.status, caixaState.data]);
 
-  // Funções de manipulação (handleAbrirCaixaRequest, etc.) sem alterações
-  const handleAbrirCaixaRequest = async (saldo: number, observacao: string) => {
-    if (!user) {
-      alert("Usuário não encontrado. Faça login novamente.");
-      return;
-    }
-    setAberturaLoading(true);
-    try {
-      const response = await fetch(
-        `http://localhost:81/api/gets/get_usuario.php?id_usuario=${user.id_usuario}`
-      );
-      const userData = await response.json();
-
-      if (!userData || !userData.empresas) {
-        throw new Error("Não foi possível buscar as empresas do usuário.");
-      }
-
-      const empresasUsuario: EmpresaType[] = userData.empresas;
-
-      if (empresasUsuario.length === 0) {
-        alert("Você não está associado a nenhuma empresa.");
-        return;
-      }
-
-      if (empresasUsuario.length === 1) {
-        await executarAberturaCaixa(
-          saldo,
-          observacao,
-          empresasUsuario[0].id_empresa
-        );
-      } else {
-        setDadosParaAbertura({ saldo, observacao });
-        setEmpresasParaSelecao(empresasUsuario);
-        setEmpresaModalOpen(true);
-      }
-    } catch (error: any) {
-      alert(`Erro: ${error.message}`);
-    } finally {
-      setAberturaLoading(false);
+  const handleEmpresaChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const empresaId = Number(event.target.value);
+    const empresa = userEmpresas.find((e) => e.id_empresa === empresaId);
+    if (empresa) {
+      setSelectedEmpresa(empresa);
     }
   };
 
-  const executarAberturaCaixa = async (
-    saldo: number,
-    observacao: string,
-    id_empresa: number
-  ) => {
-    if (!user) {
-      alert("Usuário não encontrado. Faça login novamente.");
+  const handleAbrirCaixaRequest = async (saldo: number, observacao: string) => {
+    if (!user || !selectedEmpresa) {
+      alert("Usuário ou empresa não selecionados. Ação cancelada.");
       return;
     }
     setAberturaLoading(true);
@@ -681,7 +656,7 @@ export default function Caixa() {
           body: JSON.stringify({
             saldo_inicio: saldo,
             id_usuario: user.id_usuario,
-            id_empresa: id_empresa,
+            id_empresa: selectedEmpresa.id_empresa,
             observacao: observacao,
           }),
         }
@@ -690,8 +665,14 @@ export default function Caixa() {
         const errorData = await response.json();
         throw new Error(errorData.message || "Falha ao abrir o caixa.");
       }
-      setEmpresaModalOpen(false);
-      verificarCaixa();
+
+      // ALTERADO: Chama a verificação diretamente para atualização dinâmica
+      await verificarCaixa();
+
+      // NOVO: Mostra o toast de sucesso
+      setToastMsg("Caixa aberto com sucesso!");
+      setToastOpen(true);
+      setTimeout(() => setToastOpen(false), 3000);
     } catch (err: any) {
       alert(`Erro ao abrir o caixa: ${err.message}`);
     } finally {
@@ -699,51 +680,47 @@ export default function Caixa() {
     }
   };
 
-  const handleEmpresaSelecionada = (id_empresa: number) => {
-    if (dadosParaAbertura) {
-      executarAberturaCaixa(
-        dadosParaAbertura.saldo,
-        dadosParaAbertura.observacao,
-        id_empresa
-      );
-    }
-  };
-
-  const handleFechamentoSuccess = () => {
+  const handleFechamentoSuccess = async () => {
     setFecharModalOpen(false);
-    verificarCaixa();
+
+    // ALTERADO: Chama a verificação diretamente para atualização dinâmica
+    await verificarCaixa();
+
+    // NOVO: Mostra o toast de sucesso
+    setToastMsg("Caixa fechado com sucesso!");
+    setToastOpen(true);
+    setTimeout(() => setToastOpen(false), 3000);
   };
 
-  // Funções de renderização condicional
-  const renderAuthLoading = () => (
+  const renderLoading = (message: string) => (
     <div className="flex flex-col items-center justify-center p-10">
       <FaSpinner className="animate-spin text-4xl text-gray-500" />
-      <p className="mt-4 text-gray-600 dark:text-gray-400">
-        Carregando dados de autenticação...
-      </p>
-    </div>
-  );
-
-  const renderAuthError = () => (
-    <div className="text-center p-10 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-      <p className="text-yellow-700 dark:text-yellow-300">
-        Não foi possível carregar os dados do usuário ou da empresa. Por favor,
-        faça o login novamente.
-      </p>
+      <p className="mt-4 text-gray-600 dark:text-gray-400">{message}</p>
     </div>
   );
 
   const renderContent = () => {
-    switch (caixaState.status) {
-      case "loading":
+    if (!selectedEmpresa) {
+      if (userEmpresas.length > 0) {
         return (
-          <div className="flex flex-col items-center justify-center p-10">
-            <FaSpinner className="animate-spin text-4xl text-gray-500" />
-            <p className="mt-4 text-gray-600 dark:text-gray-400">
-              Verificando status do caixa...
-            </p>
+          <div className="text-center p-10">
+            <p>Por favor, selecione uma empresa acima para começar.</p>
           </div>
         );
+      }
+      return (
+        <div className="text-center p-10 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+          <FaExclamationTriangle className="mx-auto text-4xl text-yellow-500 mb-4" />
+          <p className="text-yellow-700 dark:text-yellow-300">
+            Seu usuário não está associado a nenhuma empresa.
+          </p>
+        </div>
+      );
+    }
+
+    switch (caixaState.status) {
+      case "loading":
+        return renderLoading(`Verificando caixa de ${selectedEmpresa.nome}...`);
       case "aberto":
         return (
           <>
@@ -780,6 +757,7 @@ export default function Caixa() {
             </p>
           </div>
         );
+      case "idle":
       default:
         return null;
     }
@@ -798,16 +776,43 @@ export default function Caixa() {
         ]}
       />
       <div className="mt-4 rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
-        <h3 className="mb-6 font-semibold text-gray-800 text-theme-xl dark:text-white/90 sm:text-2xl">
-          Gerenciamento de Caixa ({currentEmpresa?.nome || "..."})
-        </h3>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+          <h3 className="font-semibold text-gray-800 text-theme-xl dark:text-white/90 sm:text-2xl">
+            Gerenciamento de Caixa
+          </h3>
+          {userEmpresas.length > 1 && (
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="empresa-select"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Empresa:
+              </label>
+              <select
+                id="empresa-select"
+                value={selectedEmpresa?.id_empresa || ""}
+                onChange={handleEmpresaChange}
+                className="bg-transparent dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              >
+                {userEmpresas.map((empresa) => (
+                  <option
+                    key={empresa.id_empresa}
+                    value={empresa.id_empresa}
+                    className="dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    {empresa.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
-        {/* 4. Ajustar a condição de renderização para usar o 'user' do contexto e 'currentEmpresa' do estado local */}
-        {authLoading
-          ? renderAuthLoading()
-          : user && currentEmpresa
+        {authLoading || empresasLoading
+          ? renderLoading("Carregando dados do usuário...")
+          : user
           ? renderContent()
-          : renderAuthError()}
+          : "Erro de autenticação."}
       </div>
 
       <ModalFecharCaixa
@@ -817,11 +822,11 @@ export default function Caixa() {
         caixa={caixaState.data}
       />
 
-      <ModalSelecionarEmpresa
-        open={isEmpresaModalOpen}
-        onClose={() => setEmpresaModalOpen(false)}
-        empresas={empresasParaSelecao}
-        onSelect={handleEmpresaSelecionada}
+      {/* NOVO: Renderiza o componente Toast */}
+      <ToastSuccess
+        open={toastOpen}
+        message={toastMsg}
+        onClose={() => setToastOpen(false)}
       />
     </div>
   );

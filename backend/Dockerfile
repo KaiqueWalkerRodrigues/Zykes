@@ -7,6 +7,12 @@ WORKDIR /var/www/html
 # Instala extensões PHP necessárias para o MySQL
 RUN docker-php-ext-install pdo pdo_mysql
 
+# Instalar pacotes necessários (curl, zip, unzip, git) e o Composer
+RUN apk add --no-cache curl zip unzip git && \
+    curl -sS https://getcomposer.org/installer -o composer-setup.php && \
+    php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
+    rm composer-setup.php
+
 # Copia os arquivos do backend para o diretório de trabalho
 COPY . .
 

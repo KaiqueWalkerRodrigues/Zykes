@@ -17,11 +17,27 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
+// Validação do novo parâmetro obrigatório (ATUALIZADO)
+if (!isset($_GET['id_empresa'])) {
+    http_response_code(400);
+    echo json_encode(["status" => "error", "message" => "O parâmetro 'id_empresa' é obrigatório."]);
+    exit;
+}
+
+$id_empresa = $_GET['id_empresa'];
+
 try {
     $pdo = Conexao::pdo();
+
+    // Query ATUALIZADA para filtrar por empresa e buscar o nome do usuário
     $stmt = $pdo->prepare(
-        "SELECT * FROM caixas WHERE deleted_at IS NULL ORDER BY data_abertura DESC"
+        "SELECT c.*, u.nome as nome_usuario 
+         FROM caixas c
+         JOIN usuarios u ON c.id_vendedor = u.id_usuario
+         WHERE c.deleted_at IS NULL AND c.id_empresa = :id_empresa 
+         ORDER BY c.data_abertura DESC"
     );
+    $stmt->bindParam(':id_empresa', $id_empresa);
     $stmt->execute();
 
     $caixas = $stmt->fetchAll(PDO::FETCH_ASSOC);

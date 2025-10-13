@@ -27,8 +27,13 @@ $id_caixa = $_GET['id_caixa'];
 
 try {
     $pdo = Conexao::pdo();
+
+    // Query ATUALIZADA para buscar também o nome do usuário
     $stmt = $pdo->prepare(
-        "SELECT * FROM caixas WHERE id_caixa = :id_caixa AND deleted_at IS NULL"
+        "SELECT c.*, u.nome as nome_usuario
+         FROM caixas c
+         JOIN usuarios u ON c.id_usuario = u.id_usuario
+         WHERE c.id_caixa = :id_caixa AND c.deleted_at IS NULL"
     );
     $stmt->bindParam(':id_caixa', $id_caixa);
     $stmt->execute();

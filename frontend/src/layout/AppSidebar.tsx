@@ -7,6 +7,7 @@ import { LuPiggyBank } from "react-icons/lu";
 import { FaHome } from "react-icons/fa";
 import { FaGear } from "react-icons/fa6";
 import { useSidebar } from "../context/SidebarContext";
+import { FaFileAlt } from "react-icons/fa";
 
 type NavItem = {
   name: string;
@@ -24,15 +25,15 @@ const Items: NavItem[] = [
 ];
 
 const interfaceItems: NavItem[] = [
-  // {
-  //   icon: <GridIcon />,
-  //   name: "Dashboard",
-  //   subItems: [{ name: "Teste", path: "/dashboard/teste", pro: false }],
-  // },
   {
     icon: <LuPiggyBank />,
     name: "Caixa",
     path: "/caixa",
+  },
+  {
+    icon: <FaFileAlt />,
+    name: "Ordens de Serviço",
+    path: "/ordens-servico",
   },
 ];
 

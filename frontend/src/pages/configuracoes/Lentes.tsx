@@ -26,6 +26,11 @@ type LentesProps = {
   familiaNome?: string;
 };
 
+function isSameData(a: Lente[], b: Lente[]): boolean {
+  if (a.length !== b.length) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 /* ========================
    Funções Auxiliares (Helpers)
    ======================== */
@@ -257,6 +262,44 @@ export default function Lentes({ familiaId, familiaNome }: LentesProps) {
     () => new Map(tratamentos.map((t) => [t.id_tratamento_lente, t.nome])),
     [tratamentos]
   );
+
+  useEffect(() => {
+    // Inicia um intervalo que será executado periodicamente
+    const interval = setInterval(async () => {
+      try {
+        // Busca os dados em segundo plano para verificar se há alterações.
+        // Usamos a página 0 e um tamanho de página fixo apenas para a verificação.
+        const result = await fetchData(
+          0,
+          10,
+          search,
+          familiaId,
+          indiceMap,
+          tratamentoMap,
+          etagRef
+        );
+
+        // Se o servidor respondeu 304 (Not Modified), o ETag é o mesmo. Não fazemos nada.
+        if (result?.notModified) {
+          return;
+        }
+
+        // Se recebemos novos dados (resposta 200 OK), comparamos com os que já temos.
+        if (result?.data && !isSameData(result.data, lastDataRef.current)) {
+          // Se os dados são realmente diferentes, atualizamos nossa referência de dados
+          // e disparamos o sinal para a DataTable se redesenhar.
+          lastDataRef.current = result.data;
+          setRefreshSignal((k) => k + 1);
+        }
+      } catch (e) {
+        console.error("Erro no polling de Lentes:", e);
+      }
+    }, 7000); // Define o intervalo de verificação para 7 segundos.
+
+    // Função de limpeza: É executada quando o componente é desmontado (modal fechado).
+    // Ela para o "timer" para evitar consumo de recursos em segundo plano.
+    return () => clearInterval(interval);
+  }, [familiaId, search, indiceMap, tratamentoMap]); // Dependências do useEffect
 
   // Callbacks de sucesso
   const onCreated = () => {

@@ -466,7 +466,7 @@ export default function Lente_familias() {
           </div>
 
           {/* Conteúdo (carregado sob demanda) */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
             <React.Suspense
               fallback={
                 <div className="h-full grid place-items-center text-slate-500">

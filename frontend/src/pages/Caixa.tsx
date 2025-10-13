@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react"; // Added useRef
 import PageMeta from "../components/common/PageMeta";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import {
@@ -47,7 +47,8 @@ type VendaCaixa = {
 };
 
 // --- Componentes ---
-
+// Seus componentes (AbrirCaixaView, CaixaAbertoView, ModalFecharCaixa, etc.) permanecem aqui sem alterações.
+// Cole-os aqui para manter o arquivo completo.
 const AbrirCaixaView = ({
   onAbrirCaixaRequest,
   isLoading,
@@ -453,7 +454,6 @@ const ListaVendasCaixa = ({
   );
 };
 
-// NOVO: Componente Toast de Sucesso
 function ToastSuccess({
   open,
   message,
@@ -536,10 +536,12 @@ export default function Caixa() {
   const [vendas, setVendas] = useState<VendaCaixa[]>([]);
   const [vendasLoading, setVendasLoading] = useState(true);
   const [vendasError, setVendasError] = useState<string | null>(null);
-
-  // NOVO: Estados para o Toast
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+
+  // NOVO: Refs para controle do ETag e polling
+  const caixaEtagRef = useRef<string | null>(null);
+  const lastCaixaDataRef = useRef<string | null>(null);
 
   // Efeito para buscar as empresas do usuário
   useEffect(() => {
@@ -573,39 +575,84 @@ export default function Caixa() {
     }
   }, [authLoading, user]);
 
-  // ALTERADO: Lógica de verificação movida para uma função `useCallback`
-  const verificarCaixa = useCallback(async () => {
-    if (!selectedEmpresa) {
-      setCaixaState({ status: "idle", data: null });
-      return;
-    }
-
-    setCaixaState({ status: "loading", data: null });
-    try {
-      const response = await fetch(
-        `http://localhost:81/api/gets/verificar_caixa_aberto.php?id_empresa=${selectedEmpresa.id_empresa}`,
-        { method: "GET", cache: "no-cache" }
-      );
-      if (!response.ok) throw new Error("Falha na comunicação com o servidor.");
-      const result = await response.json();
-      if (result.status === "success") {
-        setCaixaState({
-          status: result.aberto ? "aberto" : "fechado",
-          data: result.aberto ? result.data : null,
-        });
-      } else {
-        throw new Error(result.message || "Erro ao obter dados do caixa.");
+  // ALTERADO: Lógica de verificação para suportar ETag
+  const verificarCaixa = useCallback(
+    async (isForced = false) => {
+      if (!selectedEmpresa) {
+        setCaixaState({ status: "idle", data: null });
+        return;
       }
-    } catch (error) {
-      console.error("Erro ao verificar o caixa:", error);
-      setCaixaState({ status: "error", data: null });
+
+      // Mostra 'loading' apenas na primeira vez ou quando forçado para evitar flicker
+      if (caixaState.status === "idle" || isForced) {
+        setCaixaState({ status: "loading", data: null });
+      }
+
+      try {
+        const headers: Record<string, string> = {};
+        if (caixaEtagRef.current && !isForced) {
+          headers["If-None-Match"] = caixaEtagRef.current;
+        }
+
+        const response = await fetch(
+          `http://localhost:81/api/gets/get_caixa.php?id_empresa=${selectedEmpresa.id_empresa}`,
+          { method: "GET", headers }
+        );
+
+        if (response.status === 304) {
+          // 304 Not Modified: os dados não mudaram, então não fazemos nada.
+          return;
+        }
+
+        if (!response.ok)
+          throw new Error("Falha na comunicação com o servidor.");
+
+        const newEtag = response.headers.get("etag");
+        const result = await response.json();
+        const resultString = JSON.stringify(result);
+
+        // Compara a nova resposta com a última para evitar re-renderizações desnecessárias
+        if (resultString !== lastCaixaDataRef.current) {
+          if (newEtag) caixaEtagRef.current = newEtag;
+          lastCaixaDataRef.current = resultString;
+
+          if (result.status === "success") {
+            setCaixaState({
+              status: result.aberto ? "aberto" : "fechado",
+              data: result.aberto ? result.data : null,
+            });
+          } else {
+            throw new Error(result.message || "Erro ao obter dados do caixa.");
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao verificar o caixa:", error);
+        setCaixaState({ status: "error", data: null });
+      }
+    },
+    [selectedEmpresa, caixaState.status]
+  );
+
+  // ALTERADO: Efeito que chama a verificação inicial ao mudar de empresa
+  useEffect(() => {
+    if (selectedEmpresa) {
+      // Quando a empresa muda, resetamos o ETag e forçamos a busca
+      caixaEtagRef.current = null;
+      lastCaixaDataRef.current = null;
+      verificarCaixa(true);
     }
   }, [selectedEmpresa]);
 
-  // Efeito que chama a verificação quando a empresa muda
+  // NOVO: Efeito de polling para atualização automática em segundo plano
   useEffect(() => {
-    verificarCaixa();
-  }, [verificarCaixa]);
+    if (selectedEmpresa) {
+      const intervalId = setInterval(() => {
+        verificarCaixa(); // Chama a verificação periodicamente
+      }, 5000); // A cada 5 segundos
+
+      return () => clearInterval(intervalId); // Limpa o intervalo ao desmontar
+    }
+  }, [selectedEmpresa, verificarCaixa]);
 
   // Efeito para buscar as vendas do caixa aberto (sem alteração)
   useEffect(() => {
@@ -666,10 +713,9 @@ export default function Caixa() {
         throw new Error(errorData.message || "Falha ao abrir o caixa.");
       }
 
-      // ALTERADO: Chama a verificação diretamente para atualização dinâmica
-      await verificarCaixa();
+      // ALTERADO: Força a atualização imediata
+      await verificarCaixa(true);
 
-      // NOVO: Mostra o toast de sucesso
       setToastMsg("Caixa aberto com sucesso!");
       setToastOpen(true);
       setTimeout(() => setToastOpen(false), 3000);
@@ -683,10 +729,9 @@ export default function Caixa() {
   const handleFechamentoSuccess = async () => {
     setFecharModalOpen(false);
 
-    // ALTERADO: Chama a verificação diretamente para atualização dinâmica
-    await verificarCaixa();
+    // ALTERADO: Força a atualização imediata
+    await verificarCaixa(true);
 
-    // NOVO: Mostra o toast de sucesso
     setToastMsg("Caixa fechado com sucesso!");
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 3000);
@@ -822,7 +867,6 @@ export default function Caixa() {
         caixa={caixaState.data}
       />
 
-      {/* NOVO: Renderiza o componente Toast */}
       <ToastSuccess
         open={toastOpen}
         message={toastMsg}

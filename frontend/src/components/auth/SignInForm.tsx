@@ -65,7 +65,7 @@ export default function SignInForm() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:81/api/others/login.php", {
+      const response = await fetch("http://localhost:81/api/auth/login.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario, senha }),
@@ -78,8 +78,10 @@ export default function SignInForm() {
       }
 
       if (data.user) {
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
         login(data.user);
-        navigate("/"); // Redireciona para a página principal
+        navigate("/");
       }
     } catch (err: any) {
       setError(err.message);

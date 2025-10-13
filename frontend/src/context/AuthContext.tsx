@@ -1,5 +1,4 @@
 // src/context/AuthContext.tsx
-
 import React, {
   createContext,
   useContext,
@@ -8,7 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 
-// Define a estrutura dos dados do usuário (sem alterações)
+// Estrutura dos dados do usuário (igual à sua)
 interface User {
   id_usuario: number;
   nome: string;
@@ -16,54 +15,87 @@ interface User {
   ativo: number;
 }
 
-// Define a estrutura do contexto (adicionado isLoading)
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean; // 👈 Adicionado estado de carregamento
-  login: (userData: User) => void;
+  isLoading: boolean;
+  login: (userData: User) => void; // agora só seta estado (não persiste em localStorage)
   logout: () => void;
 }
 
-// Cria o contexto com um valor padrão
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Cria o Provedor do contexto
+// Helper: decodifica o payload do JWT (sem verificar assinatura — apenas para leitura do estado)
+function parseJwt<T = any>(token: string): T | null {
+  try {
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // 👈 Estado para controlar o carregamento inicial
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Ao iniciar a aplicação, verifica se há um usuário salvo no localStorage
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      // 🔹 MIGRAÇÃO: apaga qualquer 'user' legado
+      localStorage.removeItem("user");
+
+      // 🔹 Carrega usuário do access_token (se existir)
+      const access = localStorage.getItem("access_token");
+      if (access) {
+        const payload = parseJwt<any>(access);
+        // No backend, você colocou o usuário em payload.usr
+        const usr = payload?.usr;
+        if (usr && typeof usr.id_usuario === "number") {
+          setUser({
+            id_usuario: usr.id_usuario,
+            nome: usr.nome,
+            usuario: usr.usuario,
+            ativo: usr.ativo,
+          });
+        } else {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
     } catch (error) {
-      console.error("Falha ao carregar usuário do localStorage", error);
-      // Garante que o usuário seja nulo em caso de erro no parse
+      console.error("Falha ao ler access_token", error);
       setUser(null);
     } finally {
-      // Independente do resultado, o carregamento inicial terminou
-      setIsLoading(false); // 👈 Finaliza o carregamento
+      setIsLoading(false);
     }
   }, []);
 
   const login = (userData: User) => {
-    localStorage.setItem("user", JSON.stringify(userData));
+    // 🔹 NÃO salva em localStorage — apenas em memória
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem("user");
+    // 🔹 Limpa tudo relacionado a sessão
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user"); // legado
     setUser(null);
   };
 
   const value = {
     user,
     isAuthenticated: !!user,
-    isLoading, // 👈 Exposto para os componentes
+    isLoading,
     login,
     logout,
   };
@@ -71,7 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// Cria um hook customizado para facilitar o uso do contexto (sem alterações)
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

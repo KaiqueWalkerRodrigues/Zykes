@@ -1,12 +1,13 @@
-import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import PageMeta from "../../components/common/PageMeta";
-import DataTable from "../../components/tables/table";
+import PageBreadcrumb from "../../../components/common/PageBreadCrumb";
+import PageMeta from "../../../components/common/PageMeta";
+import DataTable from "../../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash, FaNewspaper } from "react-icons/fa6";
 import React, { useRef, useEffect, useState } from "react";
 const Lentes = React.lazy(() => import("./Lentes"));
 const Lente_fornecedores = React.lazy(() => import("./Lente_fornecedores"));
 const Lente_tipos = React.lazy(() => import("./Lente_tipos"));
+import { ENDPOINTS } from "../../../lib/endpoints";
 
 // Definição do tipo Familia
 type Familia = {
@@ -33,14 +34,11 @@ const fetchData = async (
     headers["If-None-Match"] = etagRef.current;
   }
 
-  const res = await fetch(
-    "http://localhost:81/api/gets/get_lente_familias.php",
-    {
-      method: "GET",
-      headers,
-      cache: "no-cache",
-    }
-  );
+  const res = await fetch(ENDPOINTS.lente_familias.list, {
+    method: "GET",
+    headers,
+    cache: "no-cache",
+  });
 
   if (res.status === 304) {
     return { data: null, total: null, notModified: true };
@@ -157,14 +155,11 @@ export default function Lente_familias() {
     };
     if (cached?.etag) headers["If-None-Match"] = cached.etag;
 
-    const res = await fetch(
-      "http://localhost:81/api/gets/get_lente_fornecedor.php",
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ id_fornecedor }),
-      }
-    );
+    const res = await fetch(ENDPOINTS.lente_fornecedores.get, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ id_fornecedor }),
+    });
 
     if (res.status === 304 && cached) {
       return cached.nome;
@@ -486,13 +481,10 @@ export default function Lente_familias() {
 type FornecedorListItem = { id_fornecedor: number; nome: string };
 
 async function getFornecedores(): Promise<FornecedorListItem[]> {
-  const res = await fetch(
-    "http://localhost:81/api/gets/get_lente_fornecedores.php",
-    {
-      method: "GET",
-      cache: "no-cache",
-    }
-  );
+  const res = await fetch(ENDPOINTS.lente_fornecedores.list, {
+    method: "GET",
+    cache: "no-cache",
+  });
   if (!res.ok) {
     throw new Error(`Erro ao buscar fornecedores: ${res.status}`);
   }
@@ -563,19 +555,16 @@ export function ModalEditarFamilia({
 
     try {
       setLoading(true);
-      const response = await fetch(
-        "http://localhost:81/api/updates/update_lente_familia.php",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id_familia: familia.id_familia,
-            nome: editedName.trim(),
-          }),
-        }
-      );
+      const response = await fetch(ENDPOINTS.lente_familias.update, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_familia: familia.id_familia,
+          nome: editedName.trim(),
+        }),
+      });
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -611,21 +600,6 @@ export function ModalEditarFamilia({
           </div>
           <div className="relative p-4">
             <div className="grid grid-cols-24 gap-4">
-              <div className="col-span-3">
-                <label
-                  htmlFor="editar-id_familia"
-                  className="mb-2 text-sm text-slate-800 dark:text-slate-200"
-                >
-                  ID
-                </label>
-                <input
-                  type="text"
-                  id="editar-id_familia"
-                  className="bg-slate-200 dark:bg-slate-700 block placeholder:text-slate-400 text-slate-700 text-sm border border-slate-300 rounded-md px-3 py-2 w-full dark:text-slate-200 dark:border-slate-600"
-                  value={familia?.id_familia ?? ""}
-                  readOnly
-                />
-              </div>
               <div className="col-span-12">
                 <label
                   htmlFor="editar-nome"
@@ -642,7 +616,7 @@ export function ModalEditarFamilia({
                   required
                 />
               </div>
-              <div className="col-span-9">
+              <div className="col-span-12">
                 <label
                   htmlFor="editar-id_fornecedor"
                   className="mb-2 text-sm text-slate-800 dark:text-slate-200"
@@ -695,7 +669,7 @@ export function ModalEditarFamilia({
               Cancelar
             </button>
             <button
-              className="rounded-md bg-slate-700 py-2 px-4 text-center text-sm text-white shadow-md transition-all hover:bg-slate-700 disabled:opacity-60"
+              className="rounded-md bg-blue-600 py-2 px-4 text-center text-sm text-white shadow-md transition-all hover:bg-blue-700 disabled:opacity-60"
               type="submit"
               disabled={loading}
             >
@@ -779,14 +753,11 @@ export function ModalCadastrarFamilia({
 
     try {
       setLoading(true);
-      const response = await fetch(
-        "http://localhost:81/api/creates/create_lente_familia.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(ENDPOINTS.lente_familias.create, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -990,14 +961,11 @@ export function ModalExcluirFamilia({
     if (!familia) return;
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/deletes/delete_lente_familia.php",
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_familia: familia.id_familia }),
-        }
-      );
+      const resp = await fetch(ENDPOINTS.lente_familias.delete, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_familia: familia.id_familia }),
+      });
 
       if (!resp.ok) {
         const txt = await resp.text();

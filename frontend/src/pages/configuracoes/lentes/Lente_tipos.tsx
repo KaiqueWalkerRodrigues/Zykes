@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import DataTable from "../../components/tables/table";
+import DataTable from "../../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash } from "react-icons/fa6";
+import { ENDPOINTS } from "../../../lib/endpoints";
 
 /* ========================
    Tipos
@@ -560,7 +561,7 @@ function ModalEdit<T extends { nome: string }>({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-slate-700 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 disabled:opacity-60"
+              className="rounded-md bg-blue-600 py-2 px-4 text-sm text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
             >
               {loading ? "Salvando..." : "Salvar Alterações"}
             </button>
@@ -671,10 +672,10 @@ export default function Lente_Tipos() {
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-slate-900">
           <Section<LenteIndice>
             title="Índices de Refração"
-            fetchUrl="http://localhost:81/api/gets/get_lente_indices.php"
-            createUrl="http://localhost:81/api/creates/create_lente_indice.php"
-            updateUrl="http://localhost:81/api/updates/update_lente_indice.php"
-            deleteUrl="http://localhost:81/api/deletes/delete_lente_indice.php"
+            fetchUrl={ENDPOINTS.lente_indices.list}
+            createUrl={ENDPOINTS.lente_indices.create}
+            updateUrl={ENDPOINTS.lente_indices.update}
+            deleteUrl={ENDPOINTS.lente_indices.delete}
             idKey="id_indice_lente"
             idLabel="#"
           />
@@ -684,10 +685,10 @@ export default function Lente_Tipos() {
         <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-slate-900">
           <Section<LenteTratamento>
             title="Tratamentos"
-            fetchUrl="http://localhost:81/api/gets/get_lente_tratamentos.php"
-            createUrl="http://localhost:81/api/creates/create_lente_tratamento.php"
-            updateUrl="http://localhost:81/api/updates/update_lente_tratamento.php"
-            deleteUrl="http://localhost:81/api/deletes/delete_lente_tratamento.php"
+            fetchUrl={ENDPOINTS.lente_tratamentos.list}
+            createUrl={ENDPOINTS.lente_tratamentos.create}
+            updateUrl={ENDPOINTS.lente_tratamentos.update}
+            deleteUrl={ENDPOINTS.lente_tratamentos.delete}
             idKey="id_tratamento_lente"
             idLabel="#"
           />

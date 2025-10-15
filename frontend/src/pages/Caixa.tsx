@@ -13,6 +13,7 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
+import { ENDPOINTS } from "../lib/endpoints";
 
 // --- Tipos de Dados ---
 type EmpresaType = {
@@ -251,18 +252,15 @@ const ModalFecharCaixa = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        "http://localhost:81/api/updates/update_caixa.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id_caixa: caixa.id_caixa,
-            saldo_final: valor,
-            observacao: observacao.trim(),
-          }),
-        }
-      );
+      const response = await fetch(ENDPOINTS.caixas.update, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_caixa: caixa.id_caixa,
+          saldo_final: valor,
+          observacao: observacao.trim(),
+        }),
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Falha ao fechar o caixa.");
@@ -550,7 +548,7 @@ export default function Caixa() {
       setEmpresasLoading(true);
       try {
         const response = await fetch(
-          `http://localhost:81/api/gets/get_usuario.php?id_usuario=${user.id_usuario}`
+          ENDPOINTS.usuarios.get + `?id_usuario=${user.id_usuario}`
         );
         const userData = await response.json();
         if (!userData || !userData.empresas) {
@@ -595,7 +593,7 @@ export default function Caixa() {
         }
 
         const response = await fetch(
-          `http://localhost:81/api/gets/get_caixa.php?id_empresa=${selectedEmpresa.id_empresa}`,
+          ENDPOINTS.caixas.get + `?id_empresa=${selectedEmpresa.id_empresa}`,
           { method: "GET", headers }
         );
 
@@ -695,19 +693,16 @@ export default function Caixa() {
     }
     setAberturaLoading(true);
     try {
-      const response = await fetch(
-        "http://localhost:81/api/creates/create_caixa.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            saldo_inicio: saldo,
-            id_usuario: user.id_usuario,
-            id_empresa: selectedEmpresa.id_empresa,
-            observacao: observacao,
-          }),
-        }
-      );
+      const response = await fetch(ENDPOINTS.caixas.create, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          saldo_inicio: saldo,
+          id_usuario: user.id_usuario,
+          id_empresa: selectedEmpresa.id_empresa,
+          observacao: observacao,
+        }),
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Falha ao abrir o caixa.");

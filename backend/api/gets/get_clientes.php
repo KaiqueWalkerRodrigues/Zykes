@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 try {
     $pdo = Conexao::pdo();
     $stmt = $pdo->prepare(
-        "SELECT * FROM clientes WHERE deleted_at IS NULL ORDER BY nome ASC"
+        "SELECT * FROM clientes WHERE deleted_at IS NULL"
     );
     $stmt->execute();
 

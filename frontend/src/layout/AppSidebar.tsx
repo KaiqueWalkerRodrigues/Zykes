@@ -33,7 +33,7 @@ const interfaceItems: NavItem[] = [
   {
     icon: <FaFileAlt />,
     name: "Ordens de Serviço",
-    path: "/ordens-servico",
+    path: "/ordens_servico",
   },
 ];
 

@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import DataTable from "../../components/tables/table";
+import DataTable from "../../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash } from "react-icons/fa6";
 
 /* ========================
    Tipos
    ======================== */
-type Setor = {
-  id_setor: number;
+type Cargo = {
+  id_cargo: number;
   nome: string;
   created_at?: string | null;
   updated_at?: string | null;
@@ -326,6 +326,7 @@ function ModalCreate({
 }: ModalProps & { createUrl: string }) {
   const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
+
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -499,7 +500,7 @@ function ModalEdit<T extends { nome: string }>({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-slate-700 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 disabled:opacity-60"
+              className="rounded-md bg-blue-600 py-2 px-4 text-sm text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
             >
               {loading ? "Salvando..." : "Salvar Alterações"}
             </button>
@@ -594,16 +595,16 @@ function ModalDelete<T extends { nome: string }>({
 /* ========================
    Página Principal
    ======================== */
-export default function Setores() {
+export default function Cargos() {
   return (
     <div className="h-full">
-      <Section<Setor>
-        title="Setor"
-        fetchUrl="http://localhost:81/api/gets/get_setores.php"
-        createUrl="http://localhost:81/api/creates/create_setor.php"
-        updateUrl="http://localhost:81/api/updates/update_setor.php"
-        deleteUrl="http://localhost:81/api/deletes/delete_setor.php"
-        idKey="id_setor"
+      <Section<Cargo>
+        title="Cargo"
+        fetchUrl="http://localhost:81/api/gets/get_cargos.php"
+        createUrl="http://localhost:81/api/creates/create_cargo.php"
+        updateUrl="http://localhost:81/api/updates/update_cargo.php"
+        deleteUrl="http://localhost:81/api/deletes/delete_cargo.php"
+        idKey="id_cargo"
       />
     </div>
   );

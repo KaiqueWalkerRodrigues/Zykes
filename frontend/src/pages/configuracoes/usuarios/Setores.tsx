@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import DataTable from "../../components/tables/table";
+import DataTable from "../../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash } from "react-icons/fa6";
 
 /* ========================
    Tipos
    ======================== */
-type Empresa = {
-  id_empresa: number;
+type Setor = {
+  id_setor: number;
   nome: string;
   created_at?: string | null;
   updated_at?: string | null;
@@ -174,14 +174,14 @@ function Section<T extends { nome: string }>({
 
   const onCreated = () => {
     setCreateOpen(false);
-    setToastMsg(`${title} cadastrada com sucesso.`);
+    setToastMsg(`${title} cadastrado com sucesso.`);
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 2500);
     setRefreshSignal((prev) => prev + 1);
   };
   const onUpdated = () => {
     setEditOpen(false);
-    setToastMsg(`${title} atualizada com sucesso.`);
+    setToastMsg(`${title} atualizado com sucesso.`);
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 2500);
     setRefreshSignal((prev) => prev + 1);
@@ -189,7 +189,7 @@ function Section<T extends { nome: string }>({
   const onDeleted = () => {
     setDeleteOpen(false);
     setSelected(null);
-    setToastMsg(`${title} excluída com sucesso.`);
+    setToastMsg(`${title} excluído com sucesso.`);
     setToastOpen(true);
     setTimeout(() => setToastOpen(false), 2500);
     setRefreshSignal((prev) => prev + 1);
@@ -499,7 +499,7 @@ function ModalEdit<T extends { nome: string }>({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-slate-700 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 disabled:opacity-60"
+              className="rounded-md bg-blue-600 py-2 px-4 text-sm text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
             >
               {loading ? "Salvando..." : "Salvar Alterações"}
             </button>
@@ -594,16 +594,16 @@ function ModalDelete<T extends { nome: string }>({
 /* ========================
    Página Principal
    ======================== */
-export default function Empresas() {
+export default function Setores() {
   return (
     <div className="h-full">
-      <Section<Empresa>
-        title="Empresa"
-        fetchUrl="http://localhost:81/api/gets/get_empresas.php"
-        createUrl="http://localhost:81/api/creates/create_empresa.php"
-        updateUrl="http://localhost:81/api/updates/update_empresa.php"
-        deleteUrl="http://localhost:81/api/deletes/delete_empresa.php"
-        idKey="id_empresa"
+      <Section<Setor>
+        title="Setor"
+        fetchUrl="http://localhost:81/api/gets/get_setores.php"
+        createUrl="http://localhost:81/api/creates/create_setor.php"
+        updateUrl="http://localhost:81/api/updates/update_setor.php"
+        deleteUrl="http://localhost:81/api/deletes/delete_setor.php"
+        idKey="id_setor"
       />
     </div>
   );

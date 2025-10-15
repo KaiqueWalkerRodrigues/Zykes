@@ -1,6 +1,6 @@
-import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import PageMeta from "../../components/common/PageMeta";
-import DataTable from "../../components/tables/table";
+import PageBreadcrumb from "../../../components/common/PageBreadCrumb";
+import PageMeta from "../../../components/common/PageMeta";
+import DataTable from "../../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash } from "react-icons/fa6";
 import React, { useRef, useEffect, useState } from "react";
@@ -27,8 +27,12 @@ type Usuario = {
 };
 // --- FIM: Definição de Tipos ---
 
-function isSameData(a: Usuario[], b: Usuario[]): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+function isSameData(a: Usuario[], b: Usuario[]) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id_usuario !== b[i].id_usuario) return false;
+  }
+  return true;
 }
 
 // --- INÍCIO: Funções de API ---
@@ -36,7 +40,8 @@ const fetchData = async (
   page: number,
   pageSize: number,
   search: string,
-  etagRef?: React.MutableRefObject<string | null>
+  etagRef?: React.MutableRefObject<string | null>,
+  signal?: AbortSignal
 ) => {
   const headers: Record<string, string> = {};
   if (etagRef?.current) {
@@ -47,6 +52,7 @@ const fetchData = async (
     method: "GET",
     headers,
     cache: "no-cache",
+    signal,
   });
 
   if (res.status === 304) {
@@ -99,6 +105,12 @@ const getEmpresas = () => getRelatedData<Empresa>("get_empresas");
 
 // --- FIM: Funções de API ---
 
+function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException) return err.name === "AbortError";
+  if (err instanceof Error) return err.name === "AbortError";
+  return false;
+}
+
 // --- INÍCIO: Componente Principal ---
 export default function Usuarios() {
   const etagRef = useRef<string | null>(null);
@@ -119,21 +131,47 @@ export default function Usuarios() {
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
 
-  // Polling para atualização automática
   useEffect(() => {
-    const interval = setInterval(async () => {
+    if (!toastOpen) return;
+    const t = setTimeout(() => setToastOpen(false), 3000);
+    return () => clearTimeout(t);
+  }, [toastOpen]);
+
+  useEffect(() => {
+    let mounted = true;
+    const controller = new AbortController();
+
+    const tick = async () => {
       try {
-        const result = await fetchData(0, 10, search, etagRef);
-        if (result?.notModified) return;
-        if (result?.data && !isSameData(result.data, lastDataRef.current)) {
+        const result = await fetchData(
+          0,
+          10,
+          search,
+          etagRef,
+          controller.signal
+        );
+        if (!mounted) return;
+        if (
+          !result?.notModified &&
+          result?.data &&
+          !isSameData(result.data, lastDataRef.current)
+        ) {
           lastDataRef.current = result.data;
           setRefreshSignal((k) => k + 1);
         }
-      } catch (e) {
-        console.error("Falha no polling:", e);
+      } catch (e: unknown) {
+        if (!isAbortError(e)) console.error("Falha no polling:", e); // ✅ sem any
       }
-    }, 5000);
-    return () => clearInterval(interval);
+    };
+
+    const interval = setInterval(tick, 5000);
+    tick();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [search]);
 
   const showToast = (msg: string) => {
@@ -162,100 +200,103 @@ export default function Usuarios() {
     showToast("Usuário atualizado com sucesso.");
   };
 
-  const columns: ColumnDef<Usuario>[] = [
-    { accessorKey: "id_usuario", header: "#" },
-    { accessorKey: "nome", header: "Nome" },
-    { accessorKey: "usuario", header: "Usuário" },
-    {
-      accessorKey: "ativo",
-      header: "Status",
-      cell: ({ row }) =>
-        row.original.ativo ? (
-          <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-            Ativo
-          </span>
-        ) : (
-          <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
-            Inativo
-          </span>
+  const columns = React.useMemo<ColumnDef<Usuario>[]>(
+    () => [
+      { accessorKey: "id_usuario", header: "#" },
+      { accessorKey: "nome", header: "Nome" },
+      { accessorKey: "usuario", header: "Usuário" },
+      {
+        accessorKey: "ativo",
+        header: "Status",
+        cell: ({ row }) =>
+          row.original.ativo ? (
+            <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+              Ativo
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+              Inativo
+            </span>
+          ),
+      },
+      {
+        header: "Cargos",
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {row.original.cargos.map((c) => (
+              <span
+                key={c.id_cargo}
+                className="text-xs bg-slate-200 dark:bg-slate-700 rounded px-1.5 py-0.5"
+              >
+                {c.nome}
+              </span>
+            ))}
+          </div>
         ),
-    },
-    {
-      header: "Cargos",
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.cargos.map((c) => (
-            <span
-              key={c.id_cargo}
-              className="text-xs bg-slate-200 dark:bg-slate-700 rounded px-1.5 py-0.5"
+      },
+      {
+        header: "Setores",
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {row.original.setores.map((s) => (
+              <span
+                key={s.id_setor}
+                className="text-xs bg-blue-100 dark:bg-blue-900 rounded px-1.5 py-0.5"
+              >
+                {s.nome}
+              </span>
+            ))}
+          </div>
+        ),
+      },
+      {
+        header: "Empresas",
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {row.original.empresas.map((e) => (
+              <span
+                key={e.id_empresa}
+                className="text-xs bg-purple-100 dark:bg-purple-900 rounded px-1.5 py-0.5"
+              >
+                {e.nome}
+              </span>
+            ))}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "acoes",
+        header: "Ações",
+        cell: ({ row }) => (
+          <div className="flex flex-row">
+            <button
+              className="rounded-md rounded-r-none bg-slate-600 py-2 px-4 border-r border-slate-700 text-sm text-white"
+              type="button"
+              title="Editar Usuário"
+              onClick={() => {
+                setSelectedUsuario(row.original);
+                setEditOpen(true);
+              }}
             >
-              {c.nome}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: "Setores",
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.setores.map((s) => (
-            <span
-              key={s.id_setor}
-              className="text-xs bg-blue-100 dark:bg-blue-900 rounded px-1.5 py-0.5"
+              <FaGear />
+            </button>
+            <button
+              className="rounded-md rounded-l-none bg-red-600 py-2 px-4 text-sm text-white"
+              type="button"
+              title="Excluir Usuário"
+              onClick={() => {
+                setSelectedUsuario(row.original);
+                setDeleteOpen(true);
+              }}
             >
-              {s.nome}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: "Empresas",
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1">
-          {row.original.empresas.map((e) => (
-            <span
-              key={e.id_empresa}
-              className="text-xs bg-purple-100 dark:bg-purple-900 rounded px-1.5 py-0.5"
-            >
-              {e.nome}
-            </span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "acoes",
-      header: "Ações",
-      cell: ({ row }) => (
-        <div className="row flex">
-          <button
-            className="rounded-md rounded-r-none bg-slate-600 py-2 px-4 border-r border-slate-700 text-sm text-white"
-            type="button"
-            title="Editar Usuário"
-            onClick={() => {
-              setSelectedUsuario(row.original);
-              setEditOpen(true);
-            }}
-          >
-            <FaGear />
-          </button>
-          <button
-            className="rounded-md rounded-l-none bg-red-600 py-2 px-4 text-sm text-white"
-            type="button"
-            title="Excluir Usuário"
-            onClick={() => {
-              setSelectedUsuario(row.original);
-              setDeleteOpen(true);
-            }}
-          >
-            <FaTrash />
-          </button>
-        </div>
-      ),
-    },
-  ];
+              <FaTrash />
+            </button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <div>
@@ -302,10 +343,17 @@ export default function Usuarios() {
           columns={columns}
           fetchData={async (page, pageSize, s) => {
             const r = await fetchData(page, pageSize, s, etagRef);
-            if (r?.data && !r.notModified) {
-              lastDataRef.current = r.data;
+            if (r?.notModified) {
+              return {
+                data: lastDataRef.current,
+                total: lastDataRef.current.length,
+              };
             }
-            return r?.notModified ? { data: [], total: 0 } : r;
+            if (r?.data) {
+              lastDataRef.current = r.data;
+              return r;
+            }
+            return { data: [], total: 0 };
           }}
           pageSize={10}
           search={search}
@@ -479,6 +527,13 @@ function ModalCadastrarUsuario({
       }, 100);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -711,9 +766,9 @@ function ModalCadastrarUsuario({
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:ring-offset-slate-900 disabled:opacity-50"
+              className="inline-flex justify-center rounded-md border border-transparent bg-green-700 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:ring-offset-slate-900 disabled:opacity-50"
             >
-              {loading ? "Cadastrando..." : "Cadastrar Usuário"}
+              {loading ? "Cadastrando..." : "Cadastrar"}
             </button>
           </div>
         </form>
@@ -809,10 +864,8 @@ function ModalEditarUsuario({
     }
     try {
       setLoading(true);
-      const payload = { ...formData };
-      if (!payload.senha) {
-        delete (payload as any).senha;
-      }
+      const { senha, ...rest } = formData;
+      const payload = senha ? { ...rest, senha } : rest;
 
       const res = await fetch(
         "http://localhost:81/api/updates/update_usuario.php",
@@ -1103,7 +1156,7 @@ function ModalExcluirUsuario({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm"
+            className="rounded-md border border-slate-200 dark:border-slate-600 py-2 px-4 text-sm dark:text-slate-200 dark:hover:bg-slate-700"
             disabled={loading}
           >
             Cancelar

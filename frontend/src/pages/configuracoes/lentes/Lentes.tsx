@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import DataTable from "../../components/tables/table";
+import DataTable from "../../../components/tables/table";
 import { ColumnDef } from "@tanstack/react-table";
 import { FaGear, FaTrash } from "react-icons/fa6";
+import { ENDPOINTS } from "../../../lib/endpoints";
 
 /* ========================
    Tipos
@@ -172,14 +173,11 @@ const fetchData = async (
     headers["If-None-Match"] = etagRef.current;
   }
 
-  const res = await fetch(
-    `http://localhost:81/api/gets/get_lentes.php?id_familia=${familiaId}`,
-    {
-      method: "GET",
-      headers,
-      cache: "no-cache",
-    }
-  );
+  const res = await fetch(ENDPOINTS.lentes.list + `?id_familia=${familiaId}`, {
+    method: "GET",
+    headers,
+    cache: "no-cache",
+  });
 
   if (res.status === 304) {
     return { data: null, total: null, notModified: true };
@@ -236,8 +234,8 @@ export default function Lentes({ familiaId, familiaNome }: LentesProps) {
       try {
         setLoadingLookups(true);
         const [indicesRes, tratamentosRes] = await Promise.all([
-          fetch("http://localhost:81/api/gets/get_lente_indices.php"),
-          fetch("http://localhost:81/api/gets/get_lente_tratamentos.php"),
+          fetch(ENDPOINTS.lente_indices.list),
+          fetch(ENDPOINTS.lente_tratamentos.list),
         ]);
         if (!indicesRes.ok || !tratamentosRes.ok)
           throw new Error("Falha ao carregar dados de suporte.");
@@ -532,20 +530,17 @@ function ModalCreateLente({
 
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/creates/create_lente.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id_familia: familiaId,
-            id_indice: form.id_indice,
-            id_tratamento: form.id_tratamento,
-            valor_venda: toNumber(form.valor_venda),
-            valor_compra: toNumber(form.valor_compra),
-          }),
-        }
-      );
+      const resp = await fetch(ENDPOINTS.lentes.create, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_familia: familiaId,
+          id_indice: form.id_indice,
+          id_tratamento: form.id_tratamento,
+          valor_venda: toNumber(form.valor_venda),
+          valor_compra: toNumber(form.valor_compra),
+        }),
+      });
       if (!resp.ok) throw new Error(await resp.text());
       onSuccess();
     } catch (err) {
@@ -702,20 +697,17 @@ function ModalEditLente({
 
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/updates/update_lente.php",
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id_lente: lente.id_lente,
-            id_indice: form.id_indice,
-            id_tratamento: form.id_tratamento,
-            valor_venda: toNumber(form.valor_venda),
-            valor_compra: toNumber(form.valor_compra),
-          }),
-        }
-      );
+      const resp = await fetch(ENDPOINTS.lentes.update, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_lente: lente.id_lente,
+          id_indice: form.id_indice,
+          id_tratamento: form.id_tratamento,
+          valor_venda: toNumber(form.valor_venda),
+          valor_compra: toNumber(form.valor_compra),
+        }),
+      });
       if (!resp.ok) throw new Error(await resp.text());
       onSuccess();
     } catch (err) {
@@ -837,7 +829,7 @@ function ModalEditLente({
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-slate-700 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 disabled:opacity-60"
+              className="rounded-md bg-blue-600 py-2 px-4 text-sm text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
             >
               {loading ? "Salvando..." : "Salvar Alterações"}
             </button>
@@ -868,14 +860,11 @@ function ModalDeleteLente({
     if (!lente) return;
     try {
       setLoading(true);
-      const resp = await fetch(
-        "http://localhost:81/api/deletes/delete_lente.php",
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_lente: lente.id_lente }),
-        }
-      );
+      const resp = await fetch(ENDPOINTS.lentes.delete, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_lente: lente.id_lente }),
+      });
       if (!resp.ok) throw new Error(await resp.text());
       onSuccess();
     } catch (err) {
@@ -964,9 +953,7 @@ function ModalMassEditLente({
   useEffect(() => {
     if (open) {
       setLoadingLenses(true);
-      fetch(
-        `http://localhost:81/api/gets/get_lentes.php?id_familia=${familiaId}`
-      )
+      fetch(ENDPOINTS.lentes.list + `?id_familia=${familiaId}`)
         .then((res) => res.json())
         .then((data) => {
           setEditableLenses(JSON.parse(JSON.stringify(data)));
@@ -1003,14 +990,11 @@ function ModalMassEditLente({
         valor_compra: toNumber(l.valor_compra),
       }));
 
-      const resp = await fetch(
-        "http://localhost:81/api/updates/update_lentes_massa.php",
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const resp = await fetch(ENDPOINTS.lentes.update_massa, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       if (!resp.ok) {
         const errorData = await resp.json();

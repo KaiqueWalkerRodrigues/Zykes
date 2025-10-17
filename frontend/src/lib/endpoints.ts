@@ -34,13 +34,7 @@ export const ENDPOINTS = {
     update: `${API_BASE}/api/updates/update_lentes.php`,
     delete: `${API_BASE}/api/deletes/delete_lentes.php`,
     update_massa: `${API_BASE}/api/updates/update_lentes_massa.php`,
-  },
-  lente_familias: {
-    get: `${API_BASE}/api/gets/get_lente_familia.php`,
-    list: `${API_BASE}/api/gets/get_lente_familias.php`,
-    create: `${API_BASE}/api/creates/create_lente_familias.php`,
-    update: `${API_BASE}/api/updates/update_lente_familias.php`,
-    delete: `${API_BASE}/api/deletes/delete_lente_familias.php`,
+    list_todas: `${API_BASE}/api/gets/get_todas_lentes.php`,
   },
   lente_fornecedores: {
     get: `${API_BASE}/api/gets/get_lente_fornecedor.php`,
@@ -49,13 +43,22 @@ export const ENDPOINTS = {
     update: `${API_BASE}/api/updates/update_lente_fornecedores.php`,
     delete: `${API_BASE}/api/deletes/delete_lente_fornecedores.php`,
   },
+  lente_familias: {
+    get: `${API_BASE}/api/gets/get_lente_familia.php`,
+    list: `${API_BASE}/api/gets/get_lente_familias.php`,
+    create: `${API_BASE}/api/creates/create_lente_familias.php`,
+    update: `${API_BASE}/api/updates/update_lente_familias.php`,
+    delete: `${API_BASE}/api/deletes/delete_lente_familias.php`,
+  },
   lente_indices: {
+    get: `${API_BASE}/api/gets/get_lente_indice.php`,
     list: `${API_BASE}/api/gets/get_lente_indices.php`,
     create: `${API_BASE}/api/creates/create_lente_indices.php`,
     update: `${API_BASE}/api/updates/update_lente_indices.php`,
     delete: `${API_BASE}/api/deletes/delete_lente_indices.php`,
   },
   lente_tratamentos: {
+    get: `${API_BASE}/api/gets/get_lente_tratamento.php`,
     list: `${API_BASE}/api/gets/get_lente_tratamentos.php`,
     create: `${API_BASE}/api/creates/create_lente_tratamentos.php`,
     update: `${API_BASE}/api/updates/update_lente_tratamentos.php`,

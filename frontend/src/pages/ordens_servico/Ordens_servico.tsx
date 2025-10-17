@@ -6,6 +6,7 @@ import PageMeta from "../../components/common/PageMeta";
 import DataTable from "../../components/tables/table";
 // Renomeado para maior clareza e carregado sob demanda
 const ClientesPage = React.lazy(() => import("./Clientes"));
+const PrecoLentesPage = React.lazy(() => import("./Preco_lentes"));
 import { ENDPOINTS } from "../../lib/endpoints";
 
 // --- TIPOS ---
@@ -646,6 +647,7 @@ export default function OrdensServico() {
   const [search, setSearch] = useState("");
   const [selectedOS, setSelectedOS] = useState<OrdemServico | null>(null);
   const [clientesOpen, setClientesOpen] = useState(false);
+  const [precoLOpen, setPrecoLOpen] = useState(false);
 
   const [modals, setModals] = useState({
     create: false,
@@ -788,6 +790,13 @@ export default function OrdensServico() {
           Clientes
         </button>
         <button
+          className="rounded-md bg-slate-600 py-2 px-4 text-sm text-white shadow-md hover:bg-slate-700 transition flex items-center gap-2"
+          type="button"
+          onClick={() => setPrecoLOpen(true)}
+        >
+          Preço Lentes
+        </button>
+        <button
           className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-green-700 rounded-md shadow-md"
           type="button"
           onClick={() => openModal("create")}
@@ -864,6 +873,52 @@ export default function OrdensServico() {
               }
             >
               <ClientesPage />
+            </React.Suspense>
+          </div>
+        </div>
+      </div>
+
+      {/*Overlay para a página de Preço de Lentes */}
+      <div
+        className={`fixed inset-0 z-[70] ${
+          precoLOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        } transition-opacity duration-300`}
+        aria-hidden={!precoLOpen}
+        onClick={() => setPrecoLOpen(false)}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div
+          className="relative mx-auto my-4 h-[calc(100vh-2rem)] w-[min(1400px,95vw)] rounded-2xl bg-white shadow-xl dark:bg-slate-900 flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+                Lentes
+              </h2>
+              <p className="text-sm text-slate-500">
+                Consultar preços de lentes
+              </p>
+            </div>
+            <button
+              onClick={() => setPrecoLOpen(false)}
+              className="rounded-md border dark:text-slate-200 border-slate-200 dark:border-slate-700 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Fechar
+            </button>
+          </div>
+
+          {/* Conteúdo (carregado sob demanda) */}
+          <div className="flex-1 overflow-hidden">
+            <React.Suspense
+              fallback={
+                <div className="h-full grid place-items-center text-slate-500">
+                  Carregando Lentes...
+                </div>
+              }
+            >
+              <PrecoLentesPage />
             </React.Suspense>
           </div>
         </div>

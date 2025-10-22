@@ -1,6 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import React, { useEffect, useRef, useState } from "react";
-import { FaEdit, FaShoppingCart, FaTrash, FaWrench } from "react-icons/fa";
+import { FaTrash, FaShoppingBasket, FaDollarSign } from "react-icons/fa";
+import { FaGear } from "react-icons/fa6";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import DataTable from "../../components/tables/table";
@@ -453,15 +454,15 @@ function ModalGerarVenda({
       onClick={onClose}
     >
       <div
-        className="relative p-6 bg-white rounded-lg shadow-xl w-1/3 min-w-[350px]"
+        className="relative p-6 bg-white rounded-lg shadow-xl w-1/3 min-w-[350px] dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-bold">Gerar Venda</h2>
-        <p className="my-4">
+        <h2 className="text-xl font-bold dark:text-slate-100">Gerar Venda</h2>
+        <p className="my-4 dark:text-slate-200">
           Tem certeza que deseja gerar uma venda para a Ordem de Serviço #
           {ordemServico?.id_ordem_servico}?
           <br />
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 dark:text-slate-400">
             Valor: R${" "}
             {parseFloat(String(ordemServico?.valor_sub_total)).toFixed(2)}
           </span>
@@ -470,7 +471,7 @@ function ModalGerarVenda({
           <button
             disabled={loading}
             onClick={onClose}
-            className="px-4 py-2 text-sm bg-gray-200 rounded-md hover:bg-gray-300"
+            className="px-4 py-2 text-sm bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-slate-600 dark:hover:bg-slate-700 dark:text-slate-200"
           >
             Cancelar
           </button>
@@ -487,7 +488,7 @@ function ModalGerarVenda({
   );
 }
 
-// Modal de busca de clientes (Mantido aqui pois é um helper específico para esta página)
+// Modal de busca de clientes
 function ClienteSearchModal({
   open,
   onClose,
@@ -716,26 +717,28 @@ export default function OrdensServico() {
       header: "Ações",
       cell: ({ row }) => (
         <div className="flex gap-1">
+          {parseFloat(String(row.original.valor_sub_total)) > 0 && (
+            <button
+              title="Gerar Venda"
+              className="p-2 text-white bg-green-600 rounded-md"
+              onClick={() => openModal("venda", row.original)}
+            >
+              <FaDollarSign />
+            </button>
+          )}
           <button
             title="Gerenciar Lentes"
             className="p-2 text-white bg-purple-600 rounded-md"
             onClick={() => openModal("lentes", row.original)}
           >
-            <FaWrench />
-          </button>
-          <button
-            title="Gerar Venda"
-            className="p-2 text-white bg-green-600 rounded-md"
-            onClick={() => openModal("venda", row.original)}
-          >
-            <FaShoppingCart />
+            <FaShoppingBasket />
           </button>
           <button
             title="Editar OS"
-            className="p-2 text-white bg-blue-600 rounded-md"
+            className="p-2 text-white bg-slate-600 rounded-md"
             onClick={() => openModal("edit", row.original)}
           >
-            <FaEdit />
+            <FaGear />
           </button>
           <button
             title="Excluir OS"

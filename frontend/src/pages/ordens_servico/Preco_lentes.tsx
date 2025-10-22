@@ -148,7 +148,7 @@ export default function PrecoLentes() {
               }
               return r?.notModified ? { data: [], total: 0 } : r;
             }}
-            pageSize={10}
+            pageSize={50}
             search={search}
             setSearch={setSearch}
             refreshSignal={refreshSignal}
